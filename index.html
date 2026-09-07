@@ -4550,15 +4550,26 @@ video {
             mostrarPantalla('screen-results');
         }
         // Vista/impresión del examen para el DOCENTE (con aciertos y errores) — no se usa para el estudiante
+        // campo acepta: 'examen', 'examenRecuperacion', o el id de un insumo tipo Test (p.ej.
+        // 'insumo3') — un insumo Test se autocalifica exactamente igual que el examen (mismo
+        // motor de preguntas/pantalla completa), así que reutiliza este mismo reporte.
         function imprimirReporteExamenDocente(cedula, numTrimestre, campo) {
             campo = campo || 'examen';
             const esRecuperacion = campo === 'examenRecuperacion';
+            const esInsumoTest = /^insumo\d+$/.test(campo);
             const est = estudiantes.find(e => e.cedula === cedula);
+            // Etiqueta a mostrar: la del insumo (p.ej. "INSUMO 3") si aplica, o "Examen".
+            const etiquetaCampo = esInsumoTest
+                ? (est ? nptInsumoEtiqueta(est.curso, est.paralelo, numTrimestre, campo) : campo)
+                : (esRecuperacion ? 'Examen de Recuperación' : 'Examen');
             const reg = nptNotas[cedula]?.[`trimestre${numTrimestre}`]?.[campo];
-            if (!reg) { alert(`No se encontró un examen${esRecuperacion ? ' de recuperación' : ''} rendido para este estudiante en este trimestre.`); return; }
+            if (!reg) { alert(`No se encontró "${etiquetaCampo}" rendido/a por este estudiante en este trimestre.`); return; }
             const t = trimestresEfectivos().find(x => x.num === numTrimestre);
             const horaIni = reg.horaInicio ? new Date(reg.horaInicio).toLocaleString('es-EC') : (reg.fecha || '-');
             const horaFin = reg.horaFin ? new Date(reg.horaFin).toLocaleString('es-EC') : '-';
+            // Puntos por acierto: fijo para el examen (20 preguntas siempre); dinámico para un
+            // insumo Test porque la cantidad de preguntas por estudiante es configurable (10/total).
+            const puntosPorAcierto = esInsumoTest ? (reg.total > 0 ? Math.round((10 / reg.total) * 100) / 100 : 0) : NPT_EXAMEN_PUNTOS_POR_ACIERTO;
             // En el reporte SÍ se conserva la numeración original de cada pregunta (tal como la escribió el docente).
             const filas = reg.detalle.map((d,i) => `<tr>
                 <td class="col-num center">${i+1}</td>
@@ -4571,20 +4582,21 @@ video {
                     <strong>Docente:</strong> ${escapeHtml(NPT_NOMBRE_DOCENTE)}<br>
                     <strong>Estudiante:</strong> ${escapeHtml(est?.nombre || reg.nombre || '')} &nbsp; <strong>Cédula:</strong> ${escapeHtml(cedula)}<br>
                     <strong>Curso/Paralelo:</strong> ${escapeHtml(est?.curso||'')} "${escapeHtml(est?.paralelo||'')}"<br>
-                    <strong>Período:</strong> ${escapeHtml(t?.label||'')}${esRecuperacion ? ' — <strong>Examen de RECUPERACIÓN</strong>' : ''}<br>
+                    <strong>Período:</strong> ${escapeHtml(t?.label||'')} — <strong>${escapeHtml(etiquetaCampo)}</strong>${esInsumoTest ? ' (🧪 Test)' : ''}<br>
                     <strong>Inicio:</strong> ${escapeHtml(horaIni)} &nbsp; <strong>Fin:</strong> ${escapeHtml(horaFin)}
                 </div>
-                ${reg.motivoSalida ? `<div class="filtro" style="background:#fef2f2;border-color:#fecaca;color:#991b1b"><strong>⚠️ Examen finalizado automáticamente:</strong> ${escapeHtml(reg.motivoSalida)}</div>` : ''}
+                ${reg.motivoSalida ? `<div class="filtro" style="background:#fef2f2;border-color:#fecaca;color:#991b1b"><strong>⚠️ Finalizado/a automáticamente:</strong> ${escapeHtml(reg.motivoSalida)}</div>` : ''}
                 <table>
                     <tr><th style="width:180px">Nota obtenida</th><td><strong style="font-size:16px">${formatearNota(reg.nota)} / 10</strong></td></tr>
-                    <tr><th>Aciertos</th><td>${reg.correctas} de ${reg.total} (${NPT_EXAMEN_PUNTOS_POR_ACIERTO} pts por acierto)</td></tr>
+                    <tr><th>Aciertos</th><td>${reg.correctas} de ${reg.total} (${puntosPorAcierto} pts por acierto)</td></tr>
                 </table>
                 <h2>Detalle de respuestas</h2>
                 <table>
                     <tr><th class="col-num">#</th><th>Pregunta</th><th class="col-abrev">Respuesta del estudiante</th><th class="col-abrev">Correcta</th><th class="col-abrev">Resultado</th></tr>
                     ${filas}
                 </table>`;
-            abrirODescargarReporte(`Reporte de Examen${esRecuperacion ? ' de Recuperación' : ''} — ${est?.nombre || reg.nombre || cedula}`, contenido, `reporte_examen${esRecuperacion ? '_recuperacion' : ''}_${cedula}_t${numTrimestre}_${fechaArchivo()}.html`);
+            const nombreArchivoCampo = esInsumoTest ? `insumo_${campo}` : `examen${esRecuperacion ? '_recuperacion' : ''}`;
+            abrirODescargarReporte(`Reporte de ${etiquetaCampo} — ${est?.nombre || reg.nombre || cedula}`, contenido, `reporte_${nombreArchivoCampo}_${cedula}_t${numTrimestre}_${fechaArchivo()}.html`);
         }
 
         // ==================== NAVEGACIÓN ====================
@@ -5418,6 +5430,7 @@ video {
                 return `<div>
                     <label class="block text-xs font-bold text-slate-600 uppercase mb-1">📦 ${escapeHtml(ins.etiqueta)} — Rúbrica</label>
                     <textarea data-insumo-rubrica="${ins.id}" rows="8" placeholder="Escribe aquí los criterios de evaluación de este insumo para este trimestre..." class="npt-rubrica-insumo w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500">${escapeHtml(nptRubricaTexto(cursoActual, paraleloActual, num, ins.id))}</textarea>
+                    <div class="npt-rubrica-error-insumo hidden bg-rose-50 border border-rose-200 text-rose-700 p-2 rounded-xl text-xs mt-1" data-insumo-rubrica-error="${ins.id}"></div>
                 </div>`;
             }).join('');
         }
@@ -5620,17 +5633,17 @@ video {
             const errEl = document.getElementById('npt-examen-json-error');
             errEl.classList.add('hidden');
             document.querySelectorAll('.npt-json-error-insumo').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.npt-rubrica-error-insumo').forEach(el => el.classList.add('hidden'));
 
             // ---- Validaciones ANTES de guardar nada (evita estados a medio guardar) ----
-            // (a) Mínimo de insumos activos
+            // (a) Insumos activos: se permite guardar con cualquier cantidad, incluida una sola
+            // (el docente puede ir activándolos de a poco a lo largo del trimestre). El mínimo
+            // de NPT_MIN_INSUMOS_ACTIVOS sigue siendo el número recomendado antes del cierre del
+            // trimestre — el contador de la pestaña "Insumos y fechas" lo sigue marcando en rojo
+            // como aviso, pero ya NO bloquea el guardado.
             const configInsumos = nptLeerConfigInsumosEnEdicion();
             const activos = configInsumos.filter(x => x.habilitado);
-            if (activos.length < NPT_MIN_INSUMOS_ACTIVOS) {
-                nptGestionTab('insumos');
-                nptActualizarContadorInsumos();
-                alert(`Debes activar al menos ${NPT_MIN_INSUMOS_ACTIVOS} insumos (tienes ${activos.length}). Marca más insumos como "Activo" en la pestaña "Insumos y fechas" antes de guardar.`);
-                return;
-            }
+            nptActualizarContadorInsumos();
             // (b) JSON del examen
             const rawJson = document.getElementById('npt-examen-json').value.trim();
             let banco = [];
@@ -5653,13 +5666,31 @@ video {
                     return;
                 }
             }
-            // (c) JSON de cada insumo tipo Test activo
+            // El examen trimestral es, junto con los insumos, obligatorio al cierre del trimestre.
+            // Si ya está habilitado (🔓 activo para los estudiantes) no se permite dejarlo sin
+            // banco de preguntas: eso lo dejaría "activo" pero irrendible.
+            if (banco.length === 0 && nptExamenHabilitado(cursoActual, paraleloActual, trimestre)) {
+                nptGestionTab('examen');
+                errEl.textContent = 'El examen trimestral está habilitado para los estudiantes: no puedes guardar sin su banco de preguntas. Regístralo aquí, o primero ciérralo con el botón "🔒 Cerrar examen" en la tarjeta del trimestre.';
+                errEl.classList.remove('hidden');
+                return;
+            }
+            // (c) Todo insumo ACTIVO debe tener ya registrado su contenido correspondiente:
+            // banco de preguntas (tipo Test) o texto de rúbrica (tipo Texto). No se permite
+            // guardar la activación de un insumo vacío — el estudiante no podría rendirlo/
+            // entregarlo de verdad, y quedaría "activo" solo de nombre.
             const bancosPorInsumo = {};
-            for (const ins of activos.filter(x => x.tipo === 'test')) {
-                const ta = document.querySelector(`.npt-json-preguntas-insumo[data-insumo-preguntas="${ins.id}"]`);
-                const rawInsumoJson = texto(ta?.value).trim();
-                let bancoInsumo = [];
-                if (rawInsumoJson) {
+            for (const ins of activos) {
+                if (ins.tipo === 'test') {
+                    const ta = document.querySelector(`.npt-json-preguntas-insumo[data-insumo-preguntas="${ins.id}"]`);
+                    const rawInsumoJson = texto(ta?.value).trim();
+                    if (!rawInsumoJson) {
+                        nptGestionTab('rubricas');
+                        const errInsumo = document.querySelector(`.npt-json-error-insumo[data-insumo-error="${ins.id}"]`);
+                        if (errInsumo) { errInsumo.textContent = `Debes registrar el banco de preguntas de "${ins.etiqueta}" antes de poder activarlo.`; errInsumo.classList.remove('hidden'); }
+                        return;
+                    }
+                    let bancoInsumo;
                     try {
                         bancoInsumo = JSON.parse(rawInsumoJson);
                         if (!Array.isArray(bancoInsumo) || bancoInsumo.length === 0) throw new Error('Debe ser una lista con al menos una pregunta.');
@@ -5677,8 +5708,17 @@ video {
                         if (errInsumo) { errInsumo.textContent = `JSON de "${ins.etiqueta}" inválido: ${e.message}`; errInsumo.classList.remove('hidden'); }
                         return;
                     }
+                    bancosPorInsumo[ins.id] = bancoInsumo;
+                } else {
+                    const ta = document.querySelector(`.npt-rubrica-insumo[data-insumo-rubrica="${ins.id}"]`);
+                    const rawRubrica = texto(ta?.value).trim();
+                    if (!rawRubrica) {
+                        nptGestionTab('rubricas');
+                        const errRubrica = document.querySelector(`.npt-rubrica-error-insumo[data-insumo-rubrica-error="${ins.id}"]`);
+                        if (errRubrica) { errRubrica.textContent = `Debes registrar la rúbrica de "${ins.etiqueta}" antes de poder activarlo.`; errRubrica.classList.remove('hidden'); }
+                        return;
+                    }
                 }
-                bancosPorInsumo[ins.id] = bancoInsumo;
             }
 
             const btn = document.getElementById('npt-btn-guardar-gestion');
@@ -6153,7 +6193,12 @@ video {
                 // (se autocalifica, igual que el examen): se muestra el desglose de aciertos.
                 const esURLDocente = !!arch?.url;
                 const verBtn = esTest
-                    ? `<span class="text-xs text-indigo-600 font-bold">🧪 ${nota ? `${nota.correctas}/${nota.total} correctas` : 'Autocalificado'}</span>`
+                    ? (nota
+                        ? `<button onclick="imprimirReporteExamenDocente('${escapeHtml(est.cedula)}',${t.num},'${claveInsumo}')"
+                                class="inline-flex items-center gap-1 text-xs bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded-lg hover:bg-indigo-100">
+                                🖨️ Ver test</button>
+                           <div class="text-[10px] text-slate-400 mt-0.5">${nota.correctas}/${nota.total} correctas</div>`
+                        : `<span class="text-xs text-slate-400 font-semibold">🧪 Aún no rendido</span>`)
                     : (esURLDocente
                         ? `<a href="${escapeHtml(arch.url||'#')}" target="_blank" rel="noopener"
                                 class="inline-flex items-center gap-1 text-xs bg-brand-50 text-brand-700 font-bold px-2 py-1 rounded-lg hover:bg-brand-100">
