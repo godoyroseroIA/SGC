@@ -2168,6 +2168,9 @@ video {
                             <div class="flex gap-2">
                                 <button id="npt-tab-entregas-sistema" onclick="cambiarModoEntregasNPT('sistema')" class="px-3 py-2 rounded-xl text-sm font-bold border-2 border-brand-600 bg-brand-600 text-white">📥 Entregas recibidas en sistema</button>
                                 <button id="npt-tab-entregas-otros" onclick="cambiarModoEntregasNPT('otros_medios')" class="px-3 py-2 rounded-xl text-sm font-bold border-2 border-amber-500 text-amber-700 bg-white hover:bg-amber-50">📋 Entregas recibidas otros medios</button>
+                                <button onclick="abrirSolicitudesRecuperacionModalNPT()" class="relative px-3 py-2 rounded-xl text-sm font-bold border-2 border-purple-500 text-purple-700 bg-white hover:bg-purple-50">📩 Solicitudes de Recuperación
+                                    <span id="npt-badge-solicitudes-rec" class="hidden absolute -top-2 -right-2 bg-rose-600 text-white text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center">0</span>
+                                </button>
                             </div>
                             <div class="flex gap-2 flex-wrap">
                                 <input type="text" id="npt-buscar-apellido" oninput="renderNPTDocente()" placeholder="🔎 Buscar por apellido..." class="text-xs border rounded-lg px-2 py-1 w-40">
@@ -2601,7 +2604,54 @@ video {
         </div>
     </div>
 
-    <!-- Modal gestión de trimestre NPT: navegación por pestañas internas -->
+    <!-- Modal: Solicitud de recuperación (la llena el representante legal, lado estudiante) -->
+    <div id="npt-solicitud-rec-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl">
+            <div class="flex justify-between border-b pb-3 mb-4">
+                <div>
+                    <h3 class="font-black text-base">🔁 Solicitud de recuperación</h3>
+                    <p id="npt-solicitud-rec-sub" class="text-xs text-slate-500"></p>
+                </div>
+                <button onclick="cerrarSolicitudRecuperacionNPT()" class="text-slate-400 hover:text-slate-700">✖</button>
+            </div>
+            <p class="text-xs text-slate-500 mb-3">Esta solicitud debe completarla el <strong>representante legal</strong> del estudiante. El docente la revisará y decidirá si aprueba o no la recuperación.</p>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nombre del representante</label>
+                    <input type="text" id="npt-solicitud-rec-nombre" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-sm focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Cédula del representante</label>
+                    <input type="text" id="npt-solicitud-rec-cedula" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-sm focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Motivo de la solicitud</label>
+                    <textarea id="npt-solicitud-rec-motivo" rows="4" placeholder="Explique brevemente por qué solicita la recuperación..." class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-sm focus:ring-2 focus:ring-brand-500"></textarea>
+                </div>
+                <label class="flex items-start gap-2 text-xs text-slate-500">
+                    <input type="checkbox" id="npt-solicitud-rec-confirmo" class="mt-0.5">
+                    <span>Declaro ser el representante legal del estudiante y confirmo que la información anterior es correcta.</span>
+                </label>
+                <div id="npt-solicitud-rec-error" class="hidden bg-rose-50 border border-rose-200 text-rose-700 p-2 rounded-xl text-xs"></div>
+            </div>
+            <button id="npt-solicitud-rec-btn" onclick="enviarSolicitudRecuperacionNPT()" class="w-full mt-4 bg-amber-500 text-white py-2 rounded-xl text-sm font-bold hover:bg-amber-600">Enviar solicitud</button>
+        </div>
+    </div>
+
+    <!-- Modal: Bandeja de Solicitudes de Recuperación (lado docente) -->
+    <div id="npt-solicitudes-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-3xl shadow-2xl max-h-[88vh] flex flex-col">
+            <div class="flex justify-between border-b px-6 py-4 flex-shrink-0">
+                <h3 class="font-black text-base">📩 Solicitudes de Recuperación</h3>
+                <button onclick="cerrarSolicitudesRecuperacionModalNPT()" class="text-slate-400 hover:text-slate-700">✖</button>
+            </div>
+            <div id="npt-solicitudes-lista" class="p-6 overflow-y-auto space-y-3">
+                <!-- generado por JS -->
+            </div>
+        </div>
+    </div>
+
+
     <div id="npt-gestion-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl w-full max-w-4xl shadow-2xl max-h-[92vh] flex flex-col">
             <!-- Header sticky -->
@@ -4878,6 +4928,7 @@ video {
         let nptInsumoRecuperacionHabilitacionEstudiantes = {}; // { [curso]: { [paralelo]: { [n]: { [tipo]: { [cedula]: bool } } } } }
         let nptExamenes = {}; // { [curso]: { [paralelo]: { [n]: [ {pregunta, opciones:[{id,texto}], correcta} ... ] } } }
         let nptExamenesRecuperacion = {}; // MISMA forma que nptExamenes, pero banco INDEPENDIENTE para la recuperación del examen
+        let nptSolicitudesRecuperacion = {}; // { [cedula]: { [trimestreN]: { [clave]: {estado, motivo, repNombre, repCedula, fecha, ...} } } } — clave: 'examen' o id de insumo (p.ej. 'insumo3')
         let nptRubricas = {};                // { [curso]: { [paralelo]: { [n]: { [tipo]: {texto, fecha} } } } }
         let nptInsumoPreguntas = {};          // { [curso]: { [paralelo]: { [n]: { [slotId]: [ {pregunta, opciones:[{id,texto}], correcta} ... ] } } } }
         let nptArchivos = {};   // cache liviana: { cedula: { trimestre1: { cuaderno:{...}, libro:{...} }, ... } }
@@ -4987,6 +5038,10 @@ video {
             try { nptExamenesRecuperacion = (await leerValorRutaFirebase('nptExamenesRecuperacion')) || {}; }
             catch(e) { nptExamenesRecuperacion = {}; }
         }
+        async function cargarSolicitudesRecuperacionNPT() {
+            try { nptSolicitudesRecuperacion = (await leerValorRutaFirebase('nptSolicitudesRecuperacion')) || {}; }
+            catch(e) { nptSolicitudesRecuperacion = {}; }
+        }
         async function cargarInsumoPreguntasNPT() {
             try { nptInsumoPreguntas = (await leerValorRutaFirebase('nptInsumoPreguntas')) || {}; }
             catch(e) { nptInsumoPreguntas = {}; }
@@ -5090,10 +5145,11 @@ video {
             await Promise.all([
                 cargarConfigNPT(), cargarHabilitacionEstudiantesNPT(), cargarExamenHabilitacionEstudiantesNPT(),
                 cargarExamenRecuperacionHabilitacionEstudiantesNPT(), cargarInsumoRecuperacionHabilitacionEstudiantesNPT(),
-                cargarExamenesNPT(), cargarExamenesRecuperacionNPT(), cargarInsumoPreguntasNPT(), cargarRubricasNPT(), cargarArchivosNPT(), cargarNotasNPT(), cargarEvaluacionesIANPT(),
+                cargarExamenesNPT(), cargarExamenesRecuperacionNPT(), cargarSolicitudesRecuperacionNPT(), cargarInsumoPreguntasNPT(), cargarRubricasNPT(), cargarArchivosNPT(), cargarNotasNPT(), cargarEvaluacionesIANPT(),
                 cargarObservacionesDevolucionNPT()
             ]);
             nptInicializado = true;
+            actualizarBadgeSolicitudesRecuperacionNPT();
             // Listeners en tiempo real — solo necesitan el SDK de database (sin auth)
             if (database && !nptListenersActivos) {
                 nptListenersActivos = true;
@@ -5124,6 +5180,12 @@ video {
                 });
                 database.ref('nptExamenesRecuperacion').on('value', snap => {
                     nptExamenesRecuperacion = snap.val() || {};
+                });
+                database.ref('nptSolicitudesRecuperacion').on('value', snap => {
+                    nptSolicitudesRecuperacion = snap.val() || {};
+                    renderTrimestresEstudiante();
+                    actualizarBadgeSolicitudesRecuperacionNPT();
+                    if (!document.getElementById('npt-solicitudes-modal')?.classList.contains('hidden')) renderSolicitudesRecuperacionNPT();
                 });
                 database.ref('nptRubricas').on('value', snap => {
                     nptRubricas = snap.val() || {};
@@ -5216,6 +5278,75 @@ video {
         }
         function cerrarRubricaEstudiante() {
             document.getElementById('npt-rubrica-modal').classList.add('hidden');
+        }
+
+        // ---- Modal de Solicitud de Recuperación (representante legal) ----
+        let nptSolicitudRecCtx = null; // { numTrimestre, clave, etiqueta }
+        function abrirSolicitudRecuperacionNPT(numTrimestre, clave, etiqueta) {
+            if (!estudianteActual) return;
+            nptSolicitudRecCtx = { numTrimestre, clave, etiqueta };
+            document.getElementById('npt-solicitud-rec-sub').textContent = `${trimestresEfectivos().find(x => x.num === numTrimestre)?.label || ''} · ${etiqueta}`;
+            document.getElementById('npt-solicitud-rec-nombre').value = estudianteActual.repNombre || '';
+            document.getElementById('npt-solicitud-rec-cedula').value = estudianteActual.repCedula || '';
+            document.getElementById('npt-solicitud-rec-motivo').value = '';
+            document.getElementById('npt-solicitud-rec-confirmo').checked = false;
+            document.getElementById('npt-solicitud-rec-error').classList.add('hidden');
+            document.getElementById('npt-solicitud-rec-modal').classList.remove('hidden');
+        }
+        function cerrarSolicitudRecuperacionNPT() {
+            document.getElementById('npt-solicitud-rec-modal').classList.add('hidden');
+            nptSolicitudRecCtx = null;
+        }
+        async function enviarSolicitudRecuperacionNPT() {
+            if (!estudianteActual || !nptSolicitudRecCtx) return;
+            const { numTrimestre, clave, etiqueta } = nptSolicitudRecCtx;
+            const { cedula, nombre, curso, paralelo } = estudianteActual;
+            const errEl = document.getElementById('npt-solicitud-rec-error');
+            errEl.classList.add('hidden');
+            const repNombre = texto(document.getElementById('npt-solicitud-rec-nombre').value).trim();
+            const repCedula = texto(document.getElementById('npt-solicitud-rec-cedula').value).trim();
+            const motivo = texto(document.getElementById('npt-solicitud-rec-motivo').value).trim();
+            const confirmo = document.getElementById('npt-solicitud-rec-confirmo').checked;
+            if (!repNombre || !repCedula) {
+                errEl.textContent = 'El nombre y la cédula del representante son obligatorios.';
+                errEl.classList.remove('hidden');
+                return;
+            }
+            if (!motivo) {
+                errEl.textContent = 'Debes indicar el motivo de la solicitud.';
+                errEl.classList.remove('hidden');
+                return;
+            }
+            if (!confirmo) {
+                errEl.textContent = 'Debes confirmar que eres el representante legal del estudiante.';
+                errEl.classList.remove('hidden');
+                return;
+            }
+            const btn = document.getElementById('npt-solicitud-rec-btn');
+            btn.disabled = true; btn.textContent = 'Enviando...';
+            try {
+                const registro = {
+                    estado: 'pendiente',
+                    cedula, nombre, curso, paralelo, clave, etiqueta,
+                    numTrimestre,
+                    repNombre, repCedula, motivo,
+                    fecha: new Date().toISOString()
+                };
+                await guardarValorFirebase(`nptSolicitudesRecuperacion/${cedula}/trimestre${numTrimestre}/${clave}`, registro);
+                if (!nptSolicitudesRecuperacion[cedula]) nptSolicitudesRecuperacion[cedula] = {};
+                if (!nptSolicitudesRecuperacion[cedula][`trimestre${numTrimestre}`]) nptSolicitudesRecuperacion[cedula][`trimestre${numTrimestre}`] = {};
+                nptSolicitudesRecuperacion[cedula][`trimestre${numTrimestre}`][clave] = registro;
+                cerrarSolicitudRecuperacionNPT();
+                renderTrimestresEstudiante();
+                actualizarBadgeSolicitudesRecuperacionNPT();
+                alert('✅ Solicitud enviada. El docente la revisará y te notificará su decisión aquí mismo.');
+            } catch(e) {
+                console.error(e);
+                errEl.textContent = 'Error al enviar la solicitud. Revisa la conexión e intenta de nuevo.';
+                errEl.classList.remove('hidden');
+            } finally {
+                btn.disabled = false; btn.textContent = 'Enviar solicitud';
+            }
         }
         function nptExamenHabilitado(curso, paralelo, n) {
             return !!nptTrimestreInfo(curso, paralelo, n)?.examenHabilitado;
@@ -6493,6 +6624,56 @@ video {
             if (original > recuperacion) return original;
             return (original + recuperacion) / 2;
         }
+
+        // ==================== SOLICITUD DE RECUPERACIÓN (representante legal) ====================
+        // Si la nota ORIGINAL de un insumo o del examen es menor a 9, el estudiante (a través de su
+        // representante legal) puede solicitar la recuperación desde su propia pantalla, dentro de
+        // los 8 días siguientes a la fecha de esa calificación. El docente aprueba o rechaza la
+        // solicitud desde "📩 Solicitudes de Recuperación"; al aprobarla se habilita automáticamente
+        // la recuperación para ESE estudiante en ESE insumo/examen (mismo mecanismo que ya usa el
+        // docente para habilitarla manualmente).
+        const NPT_DIAS_LIMITE_SOLICITUD_RECUPERACION = 8;
+        function nptDiasDesde(fechaStr) {
+            if (!fechaStr) return Infinity;
+            const f = new Date(fechaStr);
+            if (isNaN(f.getTime())) return Infinity;
+            return (Date.now() - f.getTime()) / 86400000;
+        }
+        function nptSolicitudRecuperacionDe(cedula, numTrimestre, clave) {
+            return nptSolicitudesRecuperacion[cedula]?.[`trimestre${numTrimestre}`]?.[clave] || null;
+        }
+        // ¿Ya está habilitada la recuperación para este estudiante en este insumo/examen? (por
+        // aprobación de una solicitud, o porque el docente la activó directamente sin pasar por
+        // solicitud) — si ya está habilitada no tiene sentido seguir mostrando el botón de solicitar.
+        function nptRecuperacionYaHabilitadaParaSolicitud(curso, paralelo, numTrimestre, clave, cedula) {
+            if (clave === 'examen') {
+                return nptExamenRecuperacionHabilitado(curso, paralelo, numTrimestre) && nptExamenRecuperacionEstudianteHabilitado(curso, paralelo, numTrimestre, cedula);
+            }
+            return nptInsumoRecuperacionHabilitado(curso, paralelo, numTrimestre, clave) && nptInsumoRecuperacionEstudianteHabilitado(curso, paralelo, numTrimestre, clave, cedula);
+        }
+        // Bloque de UI (botón/estado) a mostrar junto a una nota original — reutilizado para
+        // insumos tipo Texto, insumos tipo Test y el examen trimestral.
+        function nptBloqueSolicitudRecuperacionHtml(cedula, curso, paralelo, numTrimestre, clave, notaVal, fechaNota, etiqueta) {
+            if (notaVal === null || notaVal >= 9) return '';
+            if (nptRecuperacionYaHabilitadaParaSolicitud(curso, paralelo, numTrimestre, clave, cedula)) return '';
+            const dias = nptDiasDesde(fechaNota);
+            const solicitud = nptSolicitudRecuperacionDe(cedula, numTrimestre, clave);
+            if (solicitud?.estado === 'pendiente') {
+                return `<div class="bg-amber-50 border border-amber-200 rounded-xl p-2 mt-2 text-[11px] text-amber-700 font-semibold text-center">⏳ Solicitud de recuperación enviada — esperando respuesta del docente.</div>`;
+            }
+            if (dias > NPT_DIAS_LIMITE_SOLICITUD_RECUPERACION) {
+                return solicitud?.estado === 'rechazada'
+                    ? `<div class="bg-rose-50 border border-rose-200 rounded-xl p-2 mt-2 text-[11px] text-rose-700"><strong>Solicitud de recuperación rechazada:</strong> ${escapeHtml(solicitud.motivoRespuesta || 'Sin motivo indicado.')}<br>El plazo de ${NPT_DIAS_LIMITE_SOLICITUD_RECUPERACION} días para volver a solicitarla ya venció.</div>`
+                    : '';
+            }
+            const limite = new Date(new Date(fechaNota).getTime() + NPT_DIAS_LIMITE_SOLICITUD_RECUPERACION * 86400000);
+            const rechazoHtml = solicitud?.estado === 'rechazada'
+                ? `<div class="bg-rose-50 border border-rose-200 rounded-xl p-2 mt-2 text-[11px] text-rose-700 mb-1"><strong>Tu solicitud anterior fue rechazada:</strong> ${escapeHtml(solicitud.motivoRespuesta || 'Sin motivo indicado.')}</div>`
+                : '';
+            return `${rechazoHtml}<button type="button" onclick="abrirSolicitudRecuperacionNPT(${numTrimestre},'${clave}','${escapeHtml(etiqueta).replace(/'/g,"\\'")}')" class="w-full mt-2 bg-amber-500 text-white text-xs font-bold py-2 rounded-xl hover:bg-amber-600">🔁 Solicitar recuperación${solicitud?.estado === 'rechazada' ? ' (reintentar)' : ''}</button>
+                <p class="text-[10px] text-amber-500 mt-1 text-center">Disponible hasta el ${escapeHtml(limite.toLocaleDateString('es-EC'))} (${NPT_DIAS_LIMITE_SOLICITUD_RECUPERACION} días desde tu calificación)</p>`;
+        }
+
         // Determina qué "columnas de insumo" mostrar en el Cuadro General: si hay un curso/paralelo
         // específico seleccionado, se usan sus insumos reales (nombre propio); si se están viendo
         // varios cursos a la vez (cada uno con su propia combinación), se usan posiciones genéricas
@@ -7180,6 +7361,139 @@ video {
             }
         }
 
+        // ==================== Solicitudes de Recuperación (bandeja docente) ====================
+        function nptTodasLasSolicitudesRecuperacion() {
+            const lista = [];
+            Object.keys(nptSolicitudesRecuperacion).forEach(cedula => {
+                const porTrimestre = nptSolicitudesRecuperacion[cedula] || {};
+                Object.keys(porTrimestre).forEach(trimKey => {
+                    const porClave = porTrimestre[trimKey] || {};
+                    Object.keys(porClave).forEach(clave => {
+                        if (porClave[clave]) lista.push(porClave[clave]);
+                    });
+                });
+            });
+            lista.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+            return lista;
+        }
+        function actualizarBadgeSolicitudesRecuperacionNPT() {
+            const badge = document.getElementById('npt-badge-solicitudes-rec');
+            if (!badge) return;
+            const pendientes = nptTodasLasSolicitudesRecuperacion().filter(s => s.estado === 'pendiente').length;
+            if (pendientes > 0) {
+                badge.textContent = pendientes > 99 ? '99+' : String(pendientes);
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+        function abrirSolicitudesRecuperacionModalNPT() {
+            document.getElementById('npt-solicitudes-modal').classList.remove('hidden');
+            renderSolicitudesRecuperacionNPT();
+        }
+        function cerrarSolicitudesRecuperacionModalNPT() {
+            document.getElementById('npt-solicitudes-modal').classList.add('hidden');
+        }
+        function renderSolicitudesRecuperacionNPT() {
+            const cont = document.getElementById('npt-solicitudes-lista');
+            if (!cont) return;
+            const todas = nptTodasLasSolicitudesRecuperacion();
+            if (todas.length === 0) {
+                cont.innerHTML = `<p class="text-sm text-slate-400 text-center py-8">📭 No hay solicitudes de recuperación registradas todavía.</p>`;
+                return;
+            }
+            const pendientes = todas.filter(s => s.estado === 'pendiente');
+            const resueltas = todas.filter(s => s.estado !== 'pendiente');
+            const tarjeta = (s) => {
+                const t = trimestresEfectivos().find(x => x.num === s.numTrimestre);
+                const colorEstado = s.estado === 'pendiente' ? 'border-amber-300 bg-amber-50' : s.estado === 'aprobada' ? 'border-emerald-300 bg-emerald-50' : 'border-rose-300 bg-rose-50';
+                const badgeEstado = s.estado === 'pendiente' ? '⏳ Pendiente' : s.estado === 'aprobada' ? '✅ Aprobada' : '❌ Rechazada';
+                return `<div class="border rounded-xl p-3 ${colorEstado}">
+                    <div class="flex items-center justify-between flex-wrap gap-1 mb-1">
+                        <p class="text-sm font-bold text-slate-700">${escapeHtml(s.nombre)} <span class="text-xs font-normal text-slate-400">(${escapeHtml(s.cedula)})</span></p>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border">${badgeEstado}</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-1">${escapeHtml(s.curso||'')} "${escapeHtml(s.paralelo||'')}" · ${escapeHtml(t?.label||'')} · ${escapeHtml(s.etiqueta||s.clave)}</p>
+                    <p class="text-xs text-slate-600 italic mb-1">"${escapeHtml(s.motivo||'')}"</p>
+                    <p class="text-[10px] text-slate-400 mb-2">Representante: ${escapeHtml(s.repNombre||'-')} (C.I. ${escapeHtml(s.repCedula||'-')}) · Solicitado: ${escapeHtml(new Date(s.fecha).toLocaleString('es-EC'))}</p>
+                    ${s.estado === 'rechazada' && s.motivoRespuesta ? `<p class="text-[10px] text-rose-600 mb-2"><strong>Motivo de rechazo:</strong> ${escapeHtml(s.motivoRespuesta)}</p>` : ''}
+                    ${s.estado === 'pendiente' ? `<div class="flex gap-2">
+                        <button onclick="aprobarSolicitudRecuperacionNPT('${escapeHtml(s.cedula)}',${s.numTrimestre},'${escapeHtml(s.clave)}')" class="flex-1 bg-emerald-600 text-white text-xs font-bold py-1.5 rounded-lg hover:bg-emerald-700">✅ Aprobar</button>
+                        <button onclick="rechazarSolicitudRecuperacionNPT('${escapeHtml(s.cedula)}',${s.numTrimestre},'${escapeHtml(s.clave)}')" class="flex-1 bg-rose-600 text-white text-xs font-bold py-1.5 rounded-lg hover:bg-rose-700">❌ Rechazar</button>
+                    </div>` : ''}
+                </div>`;
+            };
+            let html = '';
+            if (pendientes.length) html += `<h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Pendientes (${pendientes.length})</h4>` + pendientes.map(tarjeta).join('');
+            if (resueltas.length) html += `<details class="mt-4"><summary class="text-xs font-bold text-slate-500 uppercase cursor-pointer mb-2">Resueltas (${resueltas.length})</summary>${resueltas.map(tarjeta).join('')}</details>`;
+            cont.innerHTML = html;
+        }
+        async function aprobarSolicitudRecuperacionNPT(cedula, numTrimestre, clave) {
+            const s = nptSolicitudRecuperacionDe(cedula, numTrimestre, clave);
+            if (!s) return;
+            const esExamen = clave === 'examen';
+            const esTest = !esExamen && nptInsumoEsTest(s.curso, s.paralelo, numTrimestre, clave);
+            const tieneContenido = esExamen
+                ? nptExamenesRecuperacionPreguntas(s.curso, s.paralelo, numTrimestre).length > 0
+                : (esTest
+                    ? nptInsumoPreguntasDe(s.curso, s.paralelo, numTrimestre, nptClaveRecuperacionInsumo(clave)).length > 0
+                    : !!nptRubricaTexto(s.curso, s.paralelo, numTrimestre, nptClaveRecuperacionInsumo(clave)));
+            const advertencia = tieneContenido ? '' : `\n\n⚠️ Ojo: todavía no has registrado ${esExamen || esTest ? 'el banco de preguntas' : 'la rúbrica'} de RECUPERACIÓN de este insumo/examen en "⚙️ Gestionar" — hazlo también para que el estudiante pueda completarla.`;
+            if (!confirm(`¿Aprobar la solicitud de recuperación de "${s.etiqueta}" para ${s.nombre}?\n\nEsto habilitará automáticamente que pueda rendir/entregar la recuperación.${advertencia}`)) return;
+            const authOk = await ensureAuth();
+            try {
+                if (esExamen) {
+                    if (!nptExamenRecuperacionHabilitacionEstudiantes[s.curso]) nptExamenRecuperacionHabilitacionEstudiantes[s.curso] = {};
+                    if (!nptExamenRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo]) nptExamenRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo] = {};
+                    if (!nptExamenRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo][numTrimestre]) nptExamenRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo][numTrimestre] = {};
+                    nptExamenRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo][numTrimestre][cedula] = true;
+                    if (authOk) await guardarValorFirebase(`nptExamenRecuperacionHabilitacionEstudiantes/${s.curso}/${s.paralelo}/${numTrimestre}/${cedula}`, true);
+                } else {
+                    if (!nptInsumoRecuperacionHabilitacionEstudiantes[s.curso]) nptInsumoRecuperacionHabilitacionEstudiantes[s.curso] = {};
+                    if (!nptInsumoRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo]) nptInsumoRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo] = {};
+                    if (!nptInsumoRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo][numTrimestre]) nptInsumoRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo][numTrimestre] = {};
+                    if (!nptInsumoRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo][numTrimestre][clave]) nptInsumoRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo][numTrimestre][clave] = {};
+                    nptInsumoRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo][numTrimestre][clave][cedula] = true;
+                    if (authOk) await guardarValorFirebase(`nptInsumoRecuperacionHabilitacionEstudiantes/${s.curso}/${s.paralelo}/${numTrimestre}/${clave}/${cedula}`, true);
+                }
+                const registro = { ...s, estado: 'aprobada', fechaRespuesta: new Date().toISOString(), docenteRespuesta: 'Ing. César Godoy Rosero, Mgt.' };
+                if (!nptSolicitudesRecuperacion[cedula]) nptSolicitudesRecuperacion[cedula] = {};
+                if (!nptSolicitudesRecuperacion[cedula][`trimestre${numTrimestre}`]) nptSolicitudesRecuperacion[cedula][`trimestre${numTrimestre}`] = {};
+                nptSolicitudesRecuperacion[cedula][`trimestre${numTrimestre}`][clave] = registro;
+                if (authOk) await guardarValorFirebase(`nptSolicitudesRecuperacion/${cedula}/trimestre${numTrimestre}/${clave}`, registro);
+                renderSolicitudesRecuperacionNPT();
+                actualizarBadgeSolicitudesRecuperacionNPT();
+                renderNPTDocente();
+                await registrarAuditoria('aprobar_solicitud_recuperacion', `Solicitud de recuperación aprobada: ${s.nombre} (${cedula}) — T${numTrimestre}/${clave}.`);
+                alert('✅ Solicitud aprobada. El estudiante ya puede rendir/entregar la recuperación.');
+            } catch(e) {
+                console.error(e);
+                alert('Error al aprobar la solicitud. Revisa la conexión e intenta de nuevo.');
+            }
+        }
+        async function rechazarSolicitudRecuperacionNPT(cedula, numTrimestre, clave) {
+            const s = nptSolicitudRecuperacionDe(cedula, numTrimestre, clave);
+            if (!s) return;
+            const motivo = prompt(`❌ Rechazar solicitud de recuperación de "${s.etiqueta}" para ${s.nombre}\n\nEscribe el motivo del rechazo (lo verá el representante/estudiante):`);
+            if (motivo === null) return;
+            if (!motivo.trim()) { alert('El motivo del rechazo es obligatorio.'); return; }
+            const authOk = await ensureAuth();
+            try {
+                const registro = { ...s, estado: 'rechazada', fechaRespuesta: new Date().toISOString(), docenteRespuesta: 'Ing. César Godoy Rosero, Mgt.', motivoRespuesta: motivo.trim() };
+                if (!nptSolicitudesRecuperacion[cedula]) nptSolicitudesRecuperacion[cedula] = {};
+                if (!nptSolicitudesRecuperacion[cedula][`trimestre${numTrimestre}`]) nptSolicitudesRecuperacion[cedula][`trimestre${numTrimestre}`] = {};
+                nptSolicitudesRecuperacion[cedula][`trimestre${numTrimestre}`][clave] = registro;
+                if (authOk) await guardarValorFirebase(`nptSolicitudesRecuperacion/${cedula}/trimestre${numTrimestre}/${clave}`, registro);
+                renderSolicitudesRecuperacionNPT();
+                actualizarBadgeSolicitudesRecuperacionNPT();
+                await registrarAuditoria('rechazar_solicitud_recuperacion', `Solicitud de recuperación rechazada: ${s.nombre} (${cedula}) — T${numTrimestre}/${clave}. Motivo: ${motivo.trim().slice(0,120)}`);
+                alert('Solicitud rechazada. El estudiante verá el motivo.');
+            } catch(e) {
+                console.error(e);
+                alert('Error al rechazar la solicitud. Revisa la conexión e intenta de nuevo.');
+            }
+        }
+
         // ==================== Monitoreo docente de exámenes bloqueados (tiempo real) ====================
         function iniciarEscuchaBloqueosExamenDocente() {
             if (nptBloqueosListenerActivo) return;
@@ -7466,7 +7780,8 @@ video {
                                 <p class="text-xs text-slate-500 font-bold mb-1">${escapeHtml(etiquetaTipo)} rendido</p>
                                 <span class="text-2xl font-black ${notaTestVal >= 7 ? 'text-emerald-600' : 'text-rose-600'}">${formatearNota(notaTestVal)} <span class="text-sm text-slate-400 font-normal">/ 10</span></span>
                                 <p class="text-[10px] text-slate-400 mt-1">${notaTest.correctas}/${notaTest.total} correctas · calificado automáticamente</p>
-                            </div>`;
+                            </div>
+                            ${nptBloqueSolicitudRecuperacionHtml(cedula, curso, paralelo, t.num, tp.id, notaTestVal, notaTest.fecha, etiquetaTipo)}`;
                         } else if (puedeRendir) {
                             estadoTestHtml = `<button onclick="comenzarInsumoTestNPT(${t.num},'${tp.id}')" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-700">🧪 Rendir ${escapeHtml(etiquetaTipo)}</button>
                             ${fechaMaxTest ? `<p class="text-[10px] text-amber-600 mt-1 text-center">⏳ Cierra el ${escapeHtml(formatearFechaMaxima(fechaMaxTest))}</p>` : ''}`;
@@ -7567,7 +7882,8 @@ video {
                                     </summary>
                                     <div class="mt-2">${renderInformeEvaluacionNPT(ia)}</div>
                                 </details>` : ''}
-                            </div>`;
+                            </div>
+                            ${nptBloqueSolicitudRecuperacionHtml(cedula, curso, paralelo, t.num, tp.id, notaVal, nota.fecha, etiquetaTipo)}`;
                         } else if (ia) {
                             estadoHtml += `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-2 text-xs text-amber-700">
                                 ⏳ Evaluado automáticamente (${formatearNota(numero(ia.nota))}/10) — pendiente de verificación por el docente. El reporte se podrá imprimir cuando el docente confirme la nota.
@@ -7710,7 +8026,8 @@ video {
                         <p class="text-xs text-slate-500 font-bold mb-1">Examen rendido</p>
                         <p class="text-sm font-black text-slate-700">${escapeHtml(mensajeCualitativoExamen(numero(notaExamen.nota)))}</p>
                         <p class="text-[10px] text-slate-400 mt-1">Tu docente tiene el detalle completo de tu examen.</p>
-                    </div>`;
+                    </div>
+                    ${nptBloqueSolicitudRecuperacionHtml(cedula, curso, paralelo, t.num, 'examen', numero(notaExamen.nota), notaExamen.fecha, '📝 Examen Trimestral')}`;
                 } else if (examenHab) {
                     examenHtml = `<button onclick="comenzarExamenTrimestre(${t.num})" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-700">📝 Realizar examen del trimestre</button>
                     ${examenFechaMax ? `<p class="text-[10px] text-amber-600 mt-1 text-center">⏳ Cierra el ${escapeHtml(formatearFechaMaxima(examenFechaMax))}</p>` : ''}`;
