@@ -2263,7 +2263,7 @@ video {
                         </table>
                         <div id="cuadro-general-no-datos" class="hidden text-center py-8 text-slate-400">📭 No hay estudiantes para mostrar.</div>
                     </div>
-                    <p class="text-[11px] text-purple-600 mt-2">🔁 Cuando aparece bajo una nota, significa que esa nota ya es el <strong>promedio</strong> entre la nota original y la de recuperación (la nota efectiva que entra a la fórmula). Pasa el mouse sobre el badge para ver el detalle. El CSV exportado incluye además las notas originales y de recuperación por separado, como respaldo.</p>
+                    <p class="text-[11px] text-purple-600 mt-2">🔁 Cuando aparece bajo una nota, indica que hubo recuperación: si esta superó a la original, la nota mostrada es el <strong>promedio</strong> entre ambas (la nota efectiva que entra a la fórmula); si no la superó, se conservó la nota original. Pasa el mouse sobre el badge para ver el detalle. El CSV exportado incluye además las notas originales y de recuperación por separado, como respaldo.</p>
                 </div>
 
                 <!-- TAB CONFIGURACIÓN -->
@@ -2652,7 +2652,7 @@ video {
                     </div>
                     <p class="text-[11px] text-slate-400 mt-2">Al cumplirse la fecha máxima, el estudiante ya no podrá subir ese insumo (o rendir el test, si es tipo Test). Puedes cambiar la fecha en cualquier momento para reabrirlo.</p>
                     <p class="text-[11px] text-slate-400">Si no le pones nombre, el insumo se muestra como "INSUMO N". El tipo "Test" reemplaza la rúbrica de texto por un banco de preguntas — configúralo en la pestaña "Rúbricas".</p>
-                    <p class="text-[11px] text-purple-600 mt-1">🔁 La columna "Recuperación" habilita, a nivel general del trimestre, que el insumo pueda recuperarse. Además debes marcar individualmente a cada estudiante que rendirá esa recuperación en la pestaña "Estudiantes". La nota de recuperación se promedia con la nota original para obtener la nota efectiva del insumo (si el estudiante no tenía nota original, se usa solo la de recuperación).</p>
+                    <p class="text-[11px] text-purple-600 mt-1">🔁 La columna "Recuperación" habilita, a nivel general del trimestre, que el insumo pueda recuperarse. Además debes marcar individualmente a cada estudiante que rendirá esa recuperación en la pestaña "Estudiantes". Si la nota de recuperación supera a la original, la nota efectiva es el promedio de ambas; si no la supera, se conserva la nota original (si el estudiante no tenía nota original, se usa solo la de recuperación).</p>
                 </section>
 
                 <!-- Pestaña 2: Rúbricas -->
@@ -2678,6 +2678,13 @@ video {
                     <details class="mt-2"><summary class="text-[11px] text-brand-600 cursor-pointer font-semibold">Ver formato de ejemplo</summary><pre class="text-[10px] bg-slate-100 rounded-lg p-2 mt-1 overflow-x-auto">[
   { "pregunta": "1. ¿...?", "opciones": [{"id":"A","texto":"..."},{"id":"B","texto":"..."}], "correcta": "A" }
 ]</pre></details>
+                    <div class="mt-4 pt-4 border-t">
+                        <h4 class="font-bold text-sm mb-2 text-purple-700">🔁 Preguntas de RECUPERACIÓN del Examen</h4>
+                        <label class="block text-xs font-bold text-purple-600 uppercase mb-1">Banco de recuperación (formato JSON, INDEPENDIENTE del examen regular)</label>
+                        <textarea id="npt-examen-recuperacion-json" rows="10" class="w-full px-3 py-2 bg-white border border-purple-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-purple-500"></textarea>
+                        <div id="npt-examen-recuperacion-json-error" class="hidden bg-rose-50 border border-rose-200 text-rose-700 p-2 rounded-xl text-xs mt-1"></div>
+                        <p class="text-[11px] text-purple-400 mt-1">Mismo formato que el examen regular. Obligatorio solo si la recuperación del examen está o va a quedar habilitada (botón "🔁 Habilitar recuperación" en la tarjeta del trimestre).</p>
+                    </div>
                 </section>
 
                 <!-- Pestaña 4: Estudiantes -->
@@ -3995,9 +4002,9 @@ video {
                 alert('No tienes habilitado el examen de recuperación de este trimestre.');
                 return;
             }
-            const bancoOriginal = nptExamenesPreguntas(estudianteActual.curso, estudianteActual.paralelo, numTrimestre);
+            const bancoOriginal = nptExamenesRecuperacionPreguntas(estudianteActual.curso, estudianteActual.paralelo, numTrimestre);
             if (!bancoOriginal || bancoOriginal.length === 0) {
-                alert('El docente aún no ha publicado las preguntas del examen para este trimestre.');
+                alert('El docente aún no ha publicado el banco de preguntas de RECUPERACIÓN del examen para este trimestre.');
                 return;
             }
             const yaTiene = nptNotas[estudianteActual.cedula]?.[`trimestre${numTrimestre}`]?.examenRecuperacion;
@@ -4069,6 +4076,62 @@ video {
                 tipoExamen: 'insumo-test',
                 insumoId: slotId,
                 insumoEtiqueta: etiqueta,
+                preguntasActivas: barajado.slice(0, cantidad),
+                poolReemplazo: barajado.slice(cantidad),
+                reemplazadas: {},
+                respuestas: {},
+                horaInicio: new Date(),
+                horaFin: null,
+                fase: 'preguntas',
+                bancoAgotadoAvisado: false,
+                intentosSalida: 0,
+                motivoSalida: null,
+                finalizandoPorSalida: false
+            };
+            respuestas = examenContexto.respuestas;
+            indicePregunta = 0;
+            document.getElementById('quiz-fase-preguntas').classList.remove('hidden');
+            document.getElementById('quiz-fase-revision').classList.add('hidden');
+            document.getElementById('quiz-fase-finalizar').classList.add('hidden');
+            actualizarBarraMetaExamen();
+            mostrarPantalla('screen-quiz');
+            solicitarPantallaCompletaExamen(() => mostrarPreguntaExamen());
+        }
+
+        // ---- Recuperación de un insumo tipo TEST: mismo motor que el original (pantalla completa,
+        // 60s por pregunta, autocalificación), pero con SU PROPIO banco de preguntas de recuperación
+        // (nptInsumoPreguntas/.../{slotId}Recuperacion) y guardando la nota bajo "{slotId}Recuperacion"
+        // (mismo patrón ya usado para la recuperación de insumos tipo Texto).
+        function comenzarInsumoTestRecuperacionNPT(numTrimestre, slotId) {
+            if (!estudianteActual) return;
+            const { curso, paralelo, cedula } = estudianteActual;
+            const etiqueta = nptInsumoEtiqueta(curso, paralelo, numTrimestre, slotId);
+            if (!nptInsumoRecuperacionEstudianteHabilitado(curso, paralelo, numTrimestre, slotId, cedula)) {
+                alert(`No tienes habilitada la recuperación de "${etiqueta}". Consulta con el docente.`);
+                return;
+            }
+            const claveRec = nptClaveRecuperacionInsumo(slotId);
+            const bancoOriginal = nptInsumoPreguntasDe(curso, paralelo, numTrimestre, claveRec);
+            if (!bancoOriginal || bancoOriginal.length === 0) {
+                alert(`El docente aún no ha publicado el banco de preguntas de RECUPERACIÓN de "${etiqueta}".`);
+                return;
+            }
+            const yaTiene = nptNotas[cedula]?.[`trimestre${numTrimestre}`]?.[claveRec];
+            if (yaTiene) {
+                alert(`Ya rendiste la recuperación de "${etiqueta}" de este trimestre. No es posible repetirla.`);
+                return;
+            }
+            const cantidad = Math.min(nptInsumoCantidadPreguntas(curso, paralelo, numTrimestre, slotId), bancoOriginal.length);
+            if (!confirm(`Vas a iniciar la RECUPERACIÓN de "${etiqueta}". Se te presentarán ${cantidad} pregunta(s), una a la vez, con 60 segundos para responder cada una.\n\nSe abre en pantalla completa y no debes salir de ella, cambiar de pestaña ni minimizar la ventana: si lo haces, se finalizará automáticamente con lo que hayas respondido hasta ese momento.\n\nUna vez iniciado no podrás pausarlo ni repetirla. ¿Deseas continuar?`)) return;
+
+            const bancoIndexado = bancoOriginal.map((q, i) => ({ ...q, _idxBanco: i }));
+            const barajado = mezclarArrayExamen(bancoIndexado);
+
+            examenContexto = {
+                trimestre: numTrimestre,
+                tipoExamen: 'insumo-test',
+                insumoId: claveRec,                            // clave de guardado: "{slotId}Recuperacion"
+                insumoEtiqueta: `${etiqueta} (Recuperación)`,
                 preguntasActivas: barajado.slice(0, cantidad),
                 poolReemplazo: barajado.slice(cantidad),
                 reemplazadas: {},
@@ -4550,18 +4613,22 @@ video {
             mostrarPantalla('screen-results');
         }
         // Vista/impresión del examen para el DOCENTE (con aciertos y errores) — no se usa para el estudiante
-        // campo acepta: 'examen', 'examenRecuperacion', o el id de un insumo tipo Test (p.ej.
-        // 'insumo3') — un insumo Test se autocalifica exactamente igual que el examen (mismo
-        // motor de preguntas/pantalla completa), así que reutiliza este mismo reporte.
+        // campo acepta: 'examen', 'examenRecuperacion', el id de un insumo tipo Test (p.ej. 'insumo3'),
+        // o la recuperación de ese insumo ('insumo3Recuperacion') — un insumo Test (y su recuperación)
+        // se autocalifican exactamente igual que el examen (mismo motor de preguntas/pantalla completa),
+        // así que reutilizan este mismo reporte.
         function imprimirReporteExamenDocente(cedula, numTrimestre, campo) {
             campo = campo || 'examen';
-            const esRecuperacion = campo === 'examenRecuperacion';
-            const esInsumoTest = /^insumo\d+$/.test(campo);
+            const esRecuperacionExamen = campo === 'examenRecuperacion';
+            const esRecuperacionInsumo = nptEsClaveRecuperacionInsumo(campo);
+            const claveBaseInsumo = esRecuperacionInsumo ? nptTipoBaseDeClaveInsumo(campo) : campo;
+            const esInsumoTest = /^insumo\d+$/.test(claveBaseInsumo);
+            const esRecuperacion = esRecuperacionExamen || (esInsumoTest && esRecuperacionInsumo);
             const est = estudiantes.find(e => e.cedula === cedula);
             // Etiqueta a mostrar: la del insumo (p.ej. "INSUMO 3") si aplica, o "Examen".
             const etiquetaCampo = esInsumoTest
-                ? (est ? nptInsumoEtiqueta(est.curso, est.paralelo, numTrimestre, campo) : campo)
-                : (esRecuperacion ? 'Examen de Recuperación' : 'Examen');
+                ? `${est ? nptInsumoEtiqueta(est.curso, est.paralelo, numTrimestre, claveBaseInsumo) : claveBaseInsumo}${esRecuperacionInsumo ? ' (Recuperación)' : ''}`
+                : (esRecuperacionExamen ? 'Examen de Recuperación' : 'Examen');
             const reg = nptNotas[cedula]?.[`trimestre${numTrimestre}`]?.[campo];
             if (!reg) { alert(`No se encontró "${etiquetaCampo}" rendido/a por este estudiante en este trimestre.`); return; }
             const t = trimestresEfectivos().find(x => x.num === numTrimestre);
@@ -4810,6 +4877,7 @@ video {
         let nptExamenRecuperacionHabilitacionEstudiantes = {}; // { [curso]: { [paralelo]: { [n]: { [cedula]: bool } } } }
         let nptInsumoRecuperacionHabilitacionEstudiantes = {}; // { [curso]: { [paralelo]: { [n]: { [tipo]: { [cedula]: bool } } } } }
         let nptExamenes = {}; // { [curso]: { [paralelo]: { [n]: [ {pregunta, opciones:[{id,texto}], correcta} ... ] } } }
+        let nptExamenesRecuperacion = {}; // MISMA forma que nptExamenes, pero banco INDEPENDIENTE para la recuperación del examen
         let nptRubricas = {};                // { [curso]: { [paralelo]: { [n]: { [tipo]: {texto, fecha} } } } }
         let nptInsumoPreguntas = {};          // { [curso]: { [paralelo]: { [n]: { [slotId]: [ {pregunta, opciones:[{id,texto}], correcta} ... ] } } } }
         let nptArchivos = {};   // cache liviana: { cedula: { trimestre1: { cuaderno:{...}, libro:{...} }, ... } }
@@ -4915,6 +4983,10 @@ video {
             try { nptExamenes = (await leerValorRutaFirebase('nptExamenes')) || {}; }
             catch(e) { nptExamenes = {}; }
         }
+        async function cargarExamenesRecuperacionNPT() {
+            try { nptExamenesRecuperacion = (await leerValorRutaFirebase('nptExamenesRecuperacion')) || {}; }
+            catch(e) { nptExamenesRecuperacion = {}; }
+        }
         async function cargarInsumoPreguntasNPT() {
             try { nptInsumoPreguntas = (await leerValorRutaFirebase('nptInsumoPreguntas')) || {}; }
             catch(e) { nptInsumoPreguntas = {}; }
@@ -5018,7 +5090,7 @@ video {
             await Promise.all([
                 cargarConfigNPT(), cargarHabilitacionEstudiantesNPT(), cargarExamenHabilitacionEstudiantesNPT(),
                 cargarExamenRecuperacionHabilitacionEstudiantesNPT(), cargarInsumoRecuperacionHabilitacionEstudiantesNPT(),
-                cargarExamenesNPT(), cargarInsumoPreguntasNPT(), cargarRubricasNPT(), cargarArchivosNPT(), cargarNotasNPT(), cargarEvaluacionesIANPT(),
+                cargarExamenesNPT(), cargarExamenesRecuperacionNPT(), cargarInsumoPreguntasNPT(), cargarRubricasNPT(), cargarArchivosNPT(), cargarNotasNPT(), cargarEvaluacionesIANPT(),
                 cargarObservacionesDevolucionNPT()
             ]);
             nptInicializado = true;
@@ -5049,6 +5121,9 @@ video {
                 });
                 database.ref('nptExamenes').on('value', snap => {
                     nptExamenes = snap.val() || {};
+                });
+                database.ref('nptExamenesRecuperacion').on('value', snap => {
+                    nptExamenesRecuperacion = snap.val() || {};
                 });
                 database.ref('nptRubricas').on('value', snap => {
                     nptRubricas = snap.val() || {};
@@ -5128,12 +5203,14 @@ video {
 
         // Muestra al estudiante, antes de que suba su insumo, el mismo texto de rúbrica que se usa
         // para la evaluación por IA — así sabe de antemano qué se le va a exigir.
-        function verRubricaEstudiante(numTrimestre, tipo) {
+        // esRecuperacion=true muestra la rúbrica INDEPENDIENTE registrada para la recuperación.
+        function verRubricaEstudiante(numTrimestre, tipo, esRecuperacion = false) {
             if (!estudianteActual) return;
             const t = trimestresEfectivos().find(x => x.num === numTrimestre);
             const tp = nptInsumoObjeto(estudianteActual.curso, estudianteActual.paralelo, numTrimestre, tipo);
-            const texto = nptRubricaTexto(estudianteActual.curso, estudianteActual.paralelo, numTrimestre, tipo);
-            document.getElementById('npt-rubrica-modal-sub').textContent = `${t?.label || ''} · ${tp?.label || ''}`;
+            const claveRubrica = esRecuperacion ? nptClaveRecuperacionInsumo(tipo) : tipo;
+            const texto = nptRubricaTexto(estudianteActual.curso, estudianteActual.paralelo, numTrimestre, claveRubrica);
+            document.getElementById('npt-rubrica-modal-sub').textContent = `${t?.label || ''} · ${tp?.label || ''}${esRecuperacion ? ' — Recuperación' : ''}`;
             document.getElementById('npt-rubrica-modal-texto').textContent = texto || 'El docente todavía no ha escrito el texto de esta rúbrica.';
             document.getElementById('npt-rubrica-modal').classList.remove('hidden');
         }
@@ -5170,6 +5247,9 @@ video {
         }
         function nptExamenesPreguntas(curso, paralelo, n) {
             return nptNodoTrimestre(nptExamenes, curso, paralelo, n) || [];
+        }
+        function nptExamenesRecuperacionPreguntas(curso, paralelo, n) {
+            return nptNodoTrimestre(nptExamenesRecuperacion, curso, paralelo, n) || [];
         }
         // Banco de preguntas de un insumo tipo TEST (mismo formato que el examen, pero uno por
         // cada insumo/curso/paralelo/trimestre en vez de uno solo por curso/paralelo/trimestre).
@@ -5301,9 +5381,9 @@ video {
             const cv = sanitizarClave(cursoActual), pv = sanitizarClave(paraleloActual);
             const actual = nptExamenRecuperacionHabilitado(cursoActual, paraleloActual, num);
             const nuevoEstado = !actual;
-            const banco = nptExamenesPreguntas(cursoActual, paraleloActual, num);
+            const banco = nptExamenesRecuperacionPreguntas(cursoActual, paraleloActual, num);
             if (nuevoEstado && banco.length === 0) {
-                alert('No puedes habilitar la recuperación: aún no has cargado preguntas del examen para este trimestre. Usa "⚙️ Gestionar".');
+                alert('No puedes habilitar la recuperación: aún no has cargado el banco de preguntas de RECUPERACIÓN del examen para este trimestre. Usa "⚙️ Gestionar" → pestaña Examen.');
                 return;
             }
             const t = trimestresEfectivos().find(x => x.num === num);
@@ -5390,11 +5470,13 @@ video {
                 const chk = document.querySelector(`#npt-gestion-insumos-body .npt-check-insumo[data-insumo="${slotId}"]`);
                 const nombreInput = document.querySelector(`#npt-gestion-insumos-body .npt-nombre-insumo[data-insumo="${slotId}"]`);
                 const tipoSelect = document.querySelector(`#npt-gestion-insumos-body .npt-tipo-insumo[data-insumo="${slotId}"]`);
+                const chkRec = document.querySelector(`#npt-gestion-insumos-body .npt-check-insumo-recuperacion[data-insumo-rec="${slotId}"]`);
                 return {
                     id: slotId,
                     habilitado: !!(chk && chk.checked),
                     etiqueta: texto(nombreInput?.value).trim() || nptInsumoEtiquetaPorDefecto(slotId),
-                    tipo: tipoSelect?.value === 'test' ? 'test' : 'texto'
+                    tipo: tipoSelect?.value === 'test' ? 'test' : 'texto',
+                    recuperacionHabilitado: !!(chkRec && chkRec.checked)
                 };
             });
         }
@@ -5414,6 +5496,8 @@ video {
                 if (ins.tipo === 'test') {
                     const bancoActual = nptInsumoPreguntasDe(cursoActual, paraleloActual, num, ins.id);
                     const cantidadActual = nptInsumoCantidadPreguntas(cursoActual, paraleloActual, num, ins.id);
+                    const claveRec = nptClaveRecuperacionInsumo(ins.id);
+                    const bancoRecActual = nptInsumoPreguntasDe(cursoActual, paraleloActual, num, claveRec);
                     return `<div class="md:col-span-2 p-3 border rounded-xl bg-amber-50/40">
                         <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
                             <label class="block text-xs font-bold text-slate-700 uppercase">🧪 ${escapeHtml(ins.etiqueta)} — Banco de preguntas (Test)</label>
@@ -5425,12 +5509,27 @@ video {
                         <textarea data-insumo-preguntas="${ins.id}" rows="8" placeholder='[ { "pregunta": "...", "opciones": [{"id":"A","texto":"..."}], "correcta": "A" } ]' class="npt-json-preguntas-insumo w-full px-3 py-2 bg-white border rounded-xl text-xs font-mono focus:ring-2 focus:ring-brand-500">${bancoActual.length ? escapeHtml(JSON.stringify(bancoActual, null, 2)) : ''}</textarea>
                         <div class="npt-json-error-insumo hidden bg-rose-50 border border-rose-200 text-rose-700 p-2 rounded-xl text-xs mt-1" data-insumo-error="${ins.id}"></div>
                         <p class="text-[11px] text-slate-400 mt-1">Registra todas las preguntas que quieras (mismo formato que el examen); a cada estudiante se le tomarán ${cantidadActual} al azar, distintas entre estudiantes. Deja el campo vacío para usar 10 por defecto.</p>
+                        ${ins.recuperacionHabilitado ? `
+                        <div class="mt-3 pt-3 border-t border-amber-200">
+                            <label class="block text-xs font-bold text-purple-700 uppercase mb-1">🔁 Banco de preguntas — Recuperación de "${escapeHtml(ins.etiqueta)}"</label>
+                            <textarea data-insumo-preguntas-rec="${claveRec}" rows="8" placeholder='[ { "pregunta": "...", "opciones": [{"id":"A","texto":"..."}], "correcta": "A" } ]' class="npt-json-preguntas-insumo-rec w-full px-3 py-2 bg-white border border-purple-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-purple-500">${bancoRecActual.length ? escapeHtml(JSON.stringify(bancoRecActual, null, 2)) : ''}</textarea>
+                            <div class="npt-json-error-insumo-rec hidden bg-rose-50 border border-rose-200 text-rose-700 p-2 rounded-xl text-xs mt-1" data-insumo-error-rec="${claveRec}"></div>
+                            <p class="text-[11px] text-purple-400 mt-1">Banco INDEPENDIENTE para la recuperación de este insumo — obligatorio mientras la casilla "Recuperación" esté marcada.</p>
+                        </div>` : ''}
                     </div>`;
                 }
+                const claveRecTexto = nptClaveRecuperacionInsumo(ins.id);
                 return `<div>
                     <label class="block text-xs font-bold text-slate-600 uppercase mb-1">📦 ${escapeHtml(ins.etiqueta)} — Rúbrica</label>
                     <textarea data-insumo-rubrica="${ins.id}" rows="8" placeholder="Escribe aquí los criterios de evaluación de este insumo para este trimestre..." class="npt-rubrica-insumo w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500">${escapeHtml(nptRubricaTexto(cursoActual, paraleloActual, num, ins.id))}</textarea>
                     <div class="npt-rubrica-error-insumo hidden bg-rose-50 border border-rose-200 text-rose-700 p-2 rounded-xl text-xs mt-1" data-insumo-rubrica-error="${ins.id}"></div>
+                    ${ins.recuperacionHabilitado ? `
+                    <div class="mt-3 pt-3 border-t">
+                        <label class="block text-xs font-bold text-purple-700 uppercase mb-1">🔁 Rúbrica — Recuperación de "${escapeHtml(ins.etiqueta)}"</label>
+                        <textarea data-insumo-rubrica-rec="${claveRecTexto}" rows="8" placeholder="Escribe aquí los criterios de evaluación de la RECUPERACIÓN de este insumo..." class="npt-rubrica-insumo-rec w-full px-3 py-2 bg-white border border-purple-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-500">${escapeHtml(nptRubricaTexto(cursoActual, paraleloActual, num, claveRecTexto))}</textarea>
+                        <div class="npt-rubrica-error-insumo-rec hidden bg-rose-50 border border-rose-200 text-rose-700 p-2 rounded-xl text-xs mt-1" data-insumo-rubrica-error-rec="${claveRecTexto}"></div>
+                        <p class="text-[11px] text-purple-400 mt-1">Rúbrica INDEPENDIENTE para la recuperación — obligatoria mientras la casilla "Recuperación" esté marcada.</p>
+                    </div>` : ''}
                 </div>`;
             }).join('');
         }
@@ -5579,6 +5678,11 @@ video {
             document.getElementById('npt-examen-json').value = banco.length ? JSON.stringify(banco, null, 2) : '';
             document.getElementById('npt-examen-json-error')?.classList.add('hidden');
 
+            // Examen JSON — RECUPERACIÓN (banco independiente)
+            const bancoRecExamen = nptExamenesRecuperacionPreguntas(cursoActual, paraleloActual, num);
+            document.getElementById('npt-examen-recuperacion-json').value = bancoRecExamen.length ? JSON.stringify(bancoRecExamen, null, 2) : '';
+            document.getElementById('npt-examen-recuperacion-json-error')?.classList.add('hidden');
+
             // Fecha máxima para rendir el examen
             const examenFechaMaxima = nptExamenFechaMaxima(cursoActual, paraleloActual, num) || '';
             document.getElementById('npt-examen-fecha-maxima').value = aDatetimeLocalValue(examenFechaMaxima);
@@ -5604,7 +5708,7 @@ video {
                     </td>
                     <td class="p-2"><input type="datetime-local" data-insumo="${slotId}" value="${fVal}" class="npt-fecha-insumo w-full text-xs border rounded-lg px-2 py-1" onchange="nptActualizarEstadoInsumo('${slotId}')"></td>
                     <td class="p-2 text-center" id="npt-estado-insumo-${slotId}">${nptEstadoInsumoHtml(habilitado, fechaMaxima)}</td>
-                    <td class="p-2 text-center"><input type="checkbox" data-insumo-rec="${slotId}" class="npt-check-insumo-recuperacion w-4 h-4 align-middle" ${recHabilitado?'checked':''}></td>
+                    <td class="p-2 text-center"><input type="checkbox" data-insumo-rec="${slotId}" class="npt-check-insumo-recuperacion w-4 h-4 align-middle" ${recHabilitado?'checked':''} onchange="nptRegenerarPestanaRubricas()"></td>
                 </tr>`;
             }).join('');
             nptActualizarContadorInsumos();
@@ -5631,9 +5735,13 @@ video {
             const { trimestre } = nptGestionCtx;
             const cv = sanitizarClave(cursoActual), pv = sanitizarClave(paraleloActual);
             const errEl = document.getElementById('npt-examen-json-error');
+            const errRecExamenEl = document.getElementById('npt-examen-recuperacion-json-error');
             errEl.classList.add('hidden');
+            errRecExamenEl.classList.add('hidden');
             document.querySelectorAll('.npt-json-error-insumo').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('.npt-rubrica-error-insumo').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.npt-json-error-insumo-rec').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.npt-rubrica-error-insumo-rec').forEach(el => el.classList.add('hidden'));
 
             // ---- Validaciones ANTES de guardar nada (evita estados a medio guardar) ----
             // (a) Insumos activos: se permite guardar con cualquier cantidad, incluida una sola
@@ -5675,6 +5783,36 @@ video {
                 errEl.classList.remove('hidden');
                 return;
             }
+            // (b.1) JSON de RECUPERACIÓN del examen (banco independiente del regular)
+            const rawJsonRecExamen = document.getElementById('npt-examen-recuperacion-json').value.trim();
+            let bancoRecuperacionExamen = [];
+            if (rawJsonRecExamen) {
+                try {
+                    bancoRecuperacionExamen = JSON.parse(rawJsonRecExamen);
+                    if (!Array.isArray(bancoRecuperacionExamen) || bancoRecuperacionExamen.length === 0) throw new Error('Debe ser una lista con al menos una pregunta.');
+                    bancoRecuperacionExamen.forEach((q, i) => {
+                        if (!q.pregunta || !Array.isArray(q.opciones) || q.opciones.length < 2 || !q.correcta) {
+                            throw new Error(`Pregunta #${i+1} incompleta (falta "pregunta", "opciones" o "correcta").`);
+                        }
+                        if (!q.opciones.some(o => o.id === q.correcta)) {
+                            throw new Error(`Pregunta #${i+1}: "correcta" (${q.correcta}) no coincide con ningún id de "opciones".`);
+                        }
+                    });
+                } catch(e) {
+                    nptGestionTab('examen');
+                    errRecExamenEl.textContent = `JSON de recuperación del examen inválido: ${e.message}`;
+                    errRecExamenEl.classList.remove('hidden');
+                    return;
+                }
+            }
+            // Igual que con el examen regular: si la recuperación ya está habilitada, no se
+            // permite dejarla sin banco de preguntas propio.
+            if (bancoRecuperacionExamen.length === 0 && nptExamenRecuperacionHabilitado(cursoActual, paraleloActual, trimestre)) {
+                nptGestionTab('examen');
+                errRecExamenEl.textContent = 'La recuperación del examen está habilitada para los estudiantes: no puedes guardar sin su propio banco de preguntas de recuperación.';
+                errRecExamenEl.classList.remove('hidden');
+                return;
+            }
             // (c) Todo insumo ACTIVO debe tener ya registrado su contenido correspondiente:
             // banco de preguntas (tipo Test) o texto de rúbrica (tipo Texto). No se permite
             // guardar la activación de un insumo vacío — el estudiante no podría rendirlo/
@@ -5709,6 +5847,38 @@ video {
                         return;
                     }
                     bancosPorInsumo[ins.id] = bancoInsumo;
+                    // Si la recuperación de este insumo está habilitada, su banco de preguntas de
+                    // recuperación (INDEPENDIENTE del original) también es obligatorio.
+                    if (ins.recuperacionHabilitado) {
+                        const claveRec = nptClaveRecuperacionInsumo(ins.id);
+                        const taRec = document.querySelector(`.npt-json-preguntas-insumo-rec[data-insumo-preguntas-rec="${claveRec}"]`);
+                        const rawInsumoJsonRec = texto(taRec?.value).trim();
+                        if (!rawInsumoJsonRec) {
+                            nptGestionTab('rubricas');
+                            const errInsumoRec = document.querySelector(`.npt-json-error-insumo-rec[data-insumo-error-rec="${claveRec}"]`);
+                            if (errInsumoRec) { errInsumoRec.textContent = `Debes registrar el banco de preguntas de RECUPERACIÓN de "${ins.etiqueta}" (tienes su recuperación habilitada).`; errInsumoRec.classList.remove('hidden'); }
+                            return;
+                        }
+                        let bancoInsumoRec;
+                        try {
+                            bancoInsumoRec = JSON.parse(rawInsumoJsonRec);
+                            if (!Array.isArray(bancoInsumoRec) || bancoInsumoRec.length === 0) throw new Error('Debe ser una lista con al menos una pregunta.');
+                            bancoInsumoRec.forEach((q, i) => {
+                                if (!q.pregunta || !Array.isArray(q.opciones) || q.opciones.length < 2 || !q.correcta) {
+                                    throw new Error(`Pregunta #${i+1} incompleta (falta "pregunta", "opciones" o "correcta").`);
+                                }
+                                if (!q.opciones.some(o => o.id === q.correcta)) {
+                                    throw new Error(`Pregunta #${i+1}: "correcta" (${q.correcta}) no coincide con ningún id de "opciones".`);
+                                }
+                            });
+                        } catch(e) {
+                            nptGestionTab('rubricas');
+                            const errInsumoRec = document.querySelector(`.npt-json-error-insumo-rec[data-insumo-error-rec="${claveRec}"]`);
+                            if (errInsumoRec) { errInsumoRec.textContent = `JSON de recuperación de "${ins.etiqueta}" inválido: ${e.message}`; errInsumoRec.classList.remove('hidden'); }
+                            return;
+                        }
+                        bancosPorInsumo[claveRec] = bancoInsumoRec;
+                    }
                 } else {
                     const ta = document.querySelector(`.npt-rubrica-insumo[data-insumo-rubrica="${ins.id}"]`);
                     const rawRubrica = texto(ta?.value).trim();
@@ -5717,6 +5887,19 @@ video {
                         const errRubrica = document.querySelector(`.npt-rubrica-error-insumo[data-insumo-rubrica-error="${ins.id}"]`);
                         if (errRubrica) { errRubrica.textContent = `Debes registrar la rúbrica de "${ins.etiqueta}" antes de poder activarlo.`; errRubrica.classList.remove('hidden'); }
                         return;
+                    }
+                    // Si la recuperación de este insumo está habilitada, su rúbrica de recuperación
+                    // (INDEPENDIENTE de la original) también es obligatoria.
+                    if (ins.recuperacionHabilitado) {
+                        const claveRecTexto = nptClaveRecuperacionInsumo(ins.id);
+                        const taRec = document.querySelector(`.npt-rubrica-insumo-rec[data-insumo-rubrica-rec="${claveRecTexto}"]`);
+                        const rawRubricaRec = texto(taRec?.value).trim();
+                        if (!rawRubricaRec) {
+                            nptGestionTab('rubricas');
+                            const errRubricaRec = document.querySelector(`.npt-rubrica-error-insumo-rec[data-insumo-rubrica-error-rec="${claveRecTexto}"]`);
+                            if (errRubricaRec) { errRubricaRec.textContent = `Debes registrar la rúbrica de RECUPERACIÓN de "${ins.etiqueta}" (tienes su recuperación habilitada).`; errRubricaRec.classList.remove('hidden'); }
+                            return;
+                        }
                     }
                 }
             }
@@ -5765,12 +5948,26 @@ video {
                         const bancoInsumo = bancosPorInsumo[ins.id] || [];
                         nptInsumoPreguntas[cv][pv][trimestre][ins.id] = bancoInsumo;
                         await guardarValorFirebase(`nptInsumoPreguntas/${cv}/${pv}/${trimestre}/${ins.id}`, bancoInsumo);
+                        if (ins.recuperacionHabilitado) {
+                            const claveRec = nptClaveRecuperacionInsumo(ins.id);
+                            const bancoInsumoRec = bancosPorInsumo[claveRec] || [];
+                            nptInsumoPreguntas[cv][pv][trimestre][claveRec] = bancoInsumoRec;
+                            await guardarValorFirebase(`nptInsumoPreguntas/${cv}/${pv}/${trimestre}/${claveRec}`, bancoInsumoRec);
+                        }
                     } else {
                         const ta = document.querySelector(`.npt-rubrica-insumo[data-insumo-rubrica="${ins.id}"]`);
                         const texto2 = texto(ta?.value).trim();
                         const registro = { texto: texto2, fecha: new Date().toISOString(), docente: 'Ing. César Godoy Rosero, Mgt.' };
                         nptRubricas[cv][pv][trimestre][ins.id] = registro;
                         await guardarValorFirebase(`nptRubricas/${cv}/${pv}/${trimestre}/${ins.id}`, registro);
+                        if (ins.recuperacionHabilitado) {
+                            const claveRecTexto = nptClaveRecuperacionInsumo(ins.id);
+                            const taRec = document.querySelector(`.npt-rubrica-insumo-rec[data-insumo-rubrica-rec="${claveRecTexto}"]`);
+                            const textoRec = texto(taRec?.value).trim();
+                            const registroRec = { texto: textoRec, fecha: new Date().toISOString(), docente: 'Ing. César Godoy Rosero, Mgt.' };
+                            nptRubricas[cv][pv][trimestre][claveRecTexto] = registroRec;
+                            await guardarValorFirebase(`nptRubricas/${cv}/${pv}/${trimestre}/${claveRecTexto}`, registroRec);
+                        }
                     }
                 }
 
@@ -5779,6 +5976,12 @@ video {
                 if (!nptExamenes[cv][pv]) nptExamenes[cv][pv] = {};
                 nptExamenes[cv][pv][trimestre] = banco;
                 await guardarValorFirebase(`nptExamenes/${cv}/${pv}/${trimestre}`, banco);
+
+                // 2.05) Banco de preguntas de RECUPERACIÓN del examen (independiente del regular)
+                if (!nptExamenesRecuperacion[cv]) nptExamenesRecuperacion[cv] = {};
+                if (!nptExamenesRecuperacion[cv][pv]) nptExamenesRecuperacion[cv][pv] = {};
+                nptExamenesRecuperacion[cv][pv][trimestre] = bancoRecuperacionExamen;
+                await guardarValorFirebase(`nptExamenesRecuperacion/${cv}/${pv}/${trimestre}`, bancoRecuperacionExamen);
 
                 // 2.1) Fecha máxima para rendir el examen
                 const examenFechaMaximaInput = document.getElementById('npt-examen-fecha-maxima')?.value || null;
@@ -6047,6 +6250,12 @@ video {
                             // Insumo tipo Test: no usa nptArchivos en el flujo normal (autocalificado,
                             // igual que el examen) — la fila se arma a partir de la nota si existe.
                             if (nota && nota.origen !== 'otros_medios') filas.push({ clase: 'insumo', esRecuperacion: false, claveInsumo: tp.id, estado: 'calificado', fechaOrden: fechaOrdenNPT(nota.fecha), est, t, tp, arch: null, nota, ia: null });
+                            // Recuperación de este insumo Test: mismo banco de preguntas independiente,
+                            // también autocalificada (sin archivo) — misma forma que la recuperación
+                            // del examen.
+                            const claveRecTest = nptClaveRecuperacionInsumo(tp.id);
+                            const notaRecTest = nptNotas[est.cedula]?.[`trimestre${t.num}`]?.[claveRecTest] || null;
+                            if (notaRecTest && notaRecTest.origen !== 'otros_medios') filas.push({ clase: 'insumoRecuperacion', esRecuperacion: true, claveInsumo: claveRecTest, estado: 'calificado', fechaOrden: fechaOrdenNPT(notaRecTest.fecha), est, t, tp, arch: null, nota: notaRecTest, ia: null });
                         } else {
                             // Excluye lo registrado por "Otros medios": eso solo aparece en esa pestaña.
                             if (arch && arch.origen !== 'otros_medios') filas.push({ clase: 'insumo', esRecuperacion: false, claveInsumo: tp.id, estado: nota ? 'calificado' : (ia ? 'ia-pendiente' : 'no-calificado'), fechaOrden: fechaOrdenNPT(arch.fechaEntrega), est, t, tp, arch, nota, ia });
@@ -6143,6 +6352,8 @@ video {
                 if (fila.examenRecuperacion) {
                     const { est, t, examenRecuperacion: examen } = fila;
                     const notaVal = numero(examen.nota);
+                    const notaOriginalExamen = notaNPTDe(est.cedula, t.num, 'examen');
+                    const seMantieneOriginalExamen = notaOriginalExamen !== null && notaOriginalExamen > notaVal;
                     const badgeClass = notaVal >= 9 ? 'nota-badge-DAR' :
                         notaVal >= 7 ? 'nota-badge-AAR' :
                         notaVal >= 4 ? 'nota-badge-PAR' : 'nota-badge-NAR';
@@ -6166,7 +6377,7 @@ video {
                         <td class="p-2 text-center">
                             <span class="text-xs font-bold px-2 py-0.5 rounded-full ${badgeClass}">${formatearNota(notaVal)}</span>
                             <div class="text-[10px] text-slate-400 mt-0.5">${examen.correctas}/${examen.total} aciertos</div>
-                            <div class="text-[9px] text-purple-600 font-bold mt-0.5">(se promedia con la original)</div>
+                            <div class="text-[9px] text-purple-600 font-bold mt-0.5">${seMantieneOriginalExamen ? `(no supera la original: se mantiene ${formatearNota(notaOriginalExamen)})` : '(se promedia con la original)'}</div>
                         </td>
                         <td class="p-2 text-center space-y-1">
                             <button onclick="eliminarExamenNPT('${escapeHtml(est.cedula)}','${escapeHtml(est.nombre).replace(/'/g,"\\'")}',${t.num},'examenRecuperacion')"
@@ -6179,6 +6390,8 @@ video {
                 }
                 const { est, t, tp, arch, nota, ia, claveInsumo, esRecuperacion } = fila;
                 const notaVal   = nota ? numero(nota.nota) : (ia ? numero(ia.nota) : null);
+                const notaOriginalDeReferenciaFila = esRecuperacion ? notaNPTDe(est.cedula, t.num, nptTipoBaseDeClaveInsumo(claveInsumo)) : null;
+                const seMantieneOriginalFila = notaOriginalDeReferenciaFila !== null && notaVal !== null && notaOriginalDeReferenciaFila > notaVal;
                 const badgeClass = notaVal === null ? 'nota-badge-SIN' :
                     notaVal >= 9 ? 'nota-badge-DAR' :
                     notaVal >= 7 ? 'nota-badge-AAR' :
@@ -6231,7 +6444,7 @@ video {
                         ${verificado ? '<div class="text-[10px] text-emerald-600 font-bold mt-0.5">✔ Verificado</div>' : (ia ? '<div class="text-[10px] text-amber-600 font-bold mt-0.5">⏳ Eval. IA — pendiente verificar</div>' : '')}
                         ${ia?.comentario ? `<div class="text-[10px] text-slate-400 mt-0.5 max-w-[160px]">${escapeHtml(ia.comentario)}</div>` : ''}
                         ${(ia && ia.firmaDetectada !== null && ia.firmaDetectada !== undefined) ? `<div class="text-[10px] font-bold mt-0.5 ${ia.firmaCoincide ? 'text-emerald-600' : 'text-rose-600'}" title="${escapeHtml(ia.comentarioFirma || '')}">${ia.firmaCoincide ? '✅ Firma coincide' : (ia.firmaDetectada ? '⚠️ Firma no coincide' : '⚠️ Sin firma del docente')}</div>` : ''}
-                        ${esRecuperacion ? '<div class="text-[9px] text-purple-600 font-bold mt-0.5">(se promedia con la original)</div>' : ''}
+                        ${esRecuperacion ? `<div class="text-[9px] text-purple-600 font-bold mt-0.5">${seMantieneOriginalFila ? `(no supera la original: se mantiene ${formatearNota(notaOriginalDeReferenciaFila)})` : '(se promedia con la original)'}</div>` : ''}
                     </td>
                     <td class="p-2 text-center space-y-1">
                         ${tieneRubrica ? `<button onclick="evaluarConIA('${escapeHtml(est.cedula)}',${t.num},'${claveInsumo}',this)"
@@ -6262,7 +6475,10 @@ video {
         // aparte (nptNotas/.../{tipo} y nptNotas/.../{tipo}Recuperacion) solo como respaldo/
         // auditoría de cómo se llegó a la nota efectiva.
         //   • Sin recuperación registrada  → nota efectiva = nota original (igual que siempre).
-        //   • Con recuperación y original  → nota efectiva = promedio(original, recuperación).
+        //   • Con recuperación y original, y la ORIGINAL es MAYOR → nota efectiva = la original
+        //     (la recuperación nunca perjudica: si no la superas, simplemente no cuenta).
+        //   • Con recuperación y original, y la recuperación iguala o supera a la original →
+        //     nota efectiva = promedio(original, recuperación).
         //   • Con recuperación y SIN original (nunca entregó / no rindió) → nota efectiva =
         //     la nota de recuperación sola, sin promediar (no tiene sentido promediar con nada).
         // tipo acepta: 'cuaderno' | 'libro' | 'tarea' | 'talleres' | 'examen'.
@@ -6274,6 +6490,7 @@ video {
             const recuperacion = notaNPTDe(cedula, numTrimestre, claveRecuperacionNPT(tipo));
             if (recuperacion === null) return original;
             if (original === null) return recuperacion;
+            if (original > recuperacion) return original;
             return (original + recuperacion) / 2;
         }
         // Determina qué "columnas de insumo" mostrar en el Cuadro General: si hay un curso/paralelo
@@ -6328,13 +6545,14 @@ video {
                 // cuando hay recuperación, el detalle original/recuperación queda en el tooltip
                 // como respaldo de auditoría, y el badge 🔁 avisa que ya está promediada.
                 const celda = (original, rec) => {
-                    const efectiva = rec !== null ? (original !== null ? (original + rec) / 2 : rec) : original;
+                    const seMantieneOriginal = rec !== null && original !== null && original > rec;
+                    const efectiva = rec !== null ? (original !== null ? (seMantieneOriginal ? original : (original + rec) / 2) : rec) : original;
                     if (efectiva === null) return `<span class="text-slate-300">—</span>`;
                     const detalle = rec !== null
-                        ? `Original: ${original !== null ? formatearNota(original) : 'sin nota'} · Recuperación: ${formatearNota(rec)} → promedio`
+                        ? `Original: ${original !== null ? formatearNota(original) : 'sin nota'} · Recuperación: ${formatearNota(rec)} → ${seMantieneOriginal ? 'se mantiene la original (fue mayor)' : 'promedio'}`
                         : '';
                     return `<span class="font-bold ${efectiva >= 7 ? 'text-emerald-600' : 'text-rose-600'}">${formatearNota(efectiva)}</span>`
-                        + (rec !== null ? `<br><span class="text-[9px] font-bold text-purple-600" title="${escapeHtml(detalle)}">🔁 promediada</span>` : '');
+                        + (rec !== null ? `<br><span class="text-[9px] font-bold text-purple-600" title="${escapeHtml(detalle)}">${seMantieneOriginal ? '🔁 original (recuperación no superó)' : '🔁 promediada'}</span>` : '');
                 };
                 const celdasInsumo = columnas.map(col => {
                     const slotId = col.porEstudiante(est);
@@ -6513,14 +6731,17 @@ video {
         async function evaluarConIACore(cedula, numTrimestre, tipo) {
             // "tipo" es la CLAVE de almacenamiento (nptArchivos/nptEvaluacionesIA): para un envío
             // normal es el tipo base ('insumo1'...); para una recuperación es "{tipo}Recuperacion".
-            // La rúbrica y el chequeo de "¿admite evaluación por rúbrica?" SIEMPRE se resuelven sobre
-            // el tipo BASE, porque la recuperación reutiliza la misma rúbrica publicada del insumo.
+            // El chequeo de "¿admite evaluación por rúbrica?" se resuelve sobre el tipo BASE (el
+            // tipo de insumo no cambia entre original y recuperación), pero la RÚBRICA usada es la
+            // que corresponda a "tipo" tal cual: la de recuperación tiene su propio texto,
+            // independiente de la original (ver "Gestionar" → pestaña Rúbricas).
             const tipoBase = nptTipoBaseDeClaveInsumo(tipo);
+            const esRecuperacionTipo = nptEsClaveRecuperacionInsumo(tipo);
             const est = estudiantes.find(e => e.cedula === cedula);
             if (!est) throw new Error('Estudiante no encontrado.');
             if (tipoBase === 'examen' || nptInsumoEsTest(est.curso, est.paralelo, numTrimestre, tipoBase)) throw new Error('Este tipo de entrega no usa evaluación automática por rúbrica.');
-            const rubrica = nptRubricaTexto(est.curso, est.paralelo, numTrimestre, tipoBase);
-            if (!rubrica) throw new Error(`No hay una rúbrica de "${tipoBase}" guardada para ${est.curso} "${est.paralelo}" en este trimestre. Ve a "⚙️ Gestionar" y escríbela primero.`);
+            const rubrica = nptRubricaTexto(est.curso, est.paralelo, numTrimestre, tipo);
+            if (!rubrica) throw new Error(`No hay una rúbrica${esRecuperacionTipo ? ' de RECUPERACIÓN' : ''} de "${tipoBase}" guardada para ${est.curso} "${est.paralelo}" en este trimestre. Ve a "⚙️ Gestionar" y escríbela primero.`);
             let arch = nptArchivos[cedula]?.[`trimestre${numTrimestre}`]?.[tipo];
             if (arch && !arch.url && (!arch.base64 || arch.base64 === '[cargado]')) {
                 arch = await leerValorRutaFirebase(`nptArchivos/${cedula}/trimestre${numTrimestre}/${tipo}`);
@@ -6854,6 +7075,8 @@ video {
                     if (remote?.base64) {
                         base64 = remote.base64;
                         // Actualizar caché
+                        if (!nptArchivos[cedula]) nptArchivos[cedula] = {};
+                        if (!nptArchivos[cedula][`trimestre${numTrimestre}`]) nptArchivos[cedula][`trimestre${numTrimestre}`] = {};
                         nptArchivos[cedula][`trimestre${numTrimestre}`][tipo] = remote;
                     } else {
                         alert('No se pudo recuperar el archivo de la base de datos.');
@@ -6925,11 +7148,13 @@ video {
                     await borrarValorFirebase(`nptEvaluacionesIA/${cedula}/trimestre${trimestre}/${tipo}`);
                     await guardarValorFirebase(`nptObservacionesDevolucion/${cedula}/trimestre${trimestre}/${tipo}`, observacion);
                 }
-                // 2) Limpiar cachés locales
+                // 2) Limpiar cachés locales (con "?." defensivo: los borrados de Firebase de
+                // arriba pueden hacer que el listener en tiempo real ya haya reemplazado estas
+                // variables globales para cuando llegamos aquí — no debe reventar si así fue).
                 if (nptArchivos[cedula]?.[`trimestre${trimestre}`]?.[tipo]) {
                     delete nptArchivos[cedula][`trimestre${trimestre}`][tipo];
-                    if (Object.keys(nptArchivos[cedula][`trimestre${trimestre}`]).length === 0) {
-                        delete nptArchivos[cedula][`trimestre${trimestre}`];
+                    if (Object.keys(nptArchivos[cedula]?.[`trimestre${trimestre}`] || {}).length === 0) {
+                        delete nptArchivos[cedula]?.[`trimestre${trimestre}`];
                     }
                 }
                 if (nptArchivosMeta[cedula]?.[`trimestre${trimestre}`]?.[tipo]) {
@@ -7050,7 +7275,7 @@ video {
                 <p><strong>Estudiante:</strong> ${escapeHtml(nombre)}</p>
                 <p><strong>Período:</strong> ${t?.label} · ${etiquetaTp}</p>
                 ${otrosMedios ? `<p class="text-amber-700 text-xs">📋 No entregó en el sistema al cierre del plazo. Ingresa la nota directamente; puedes editarla luego de guardarla.</p>` : ''}
-                ${esRec ? `<p class="text-purple-600 text-xs">🔁 Esta nota se promediará con la nota original (${notaOriginalDeReferencia !== null ? formatearNota(notaOriginalDeReferencia) : 'aún no registrada'}) para dar la nota efectiva del insumo.</p>` : ''}
+                ${esRec ? `<p class="text-purple-600 text-xs">🔁 Esta nota se comparará con la original (${notaOriginalDeReferencia !== null ? formatearNota(notaOriginalDeReferencia) : 'aún no registrada'}): si la supera, la nota efectiva será el promedio de ambas; si no, se mantiene la original.</p>` : ''}
                 ${arch?.nombre ? `<p><strong>Archivo:</strong> ${escapeHtml(arch.nombre)}</p>` : ''}
                 ${ia ? `<p><strong>Evaluación IA:</strong> ${formatearNota(ia.nota)} — ${escapeHtml(ia.comentario||'')}</p>` : ''}
                 ${ia ? `<div class="mt-3">${renderInformeEvaluacionNPT(ia)}</div>` : ''}`;
@@ -7178,13 +7403,13 @@ video {
                             const ia = nptEvaluacionesIA[est.cedula]?.[`trimestre${t.num}`]?.[tp.id];
                             agregarFila(est, t, tp.label, arch, nota, ia);
                         }
-                        if (tp.tipo === 'test') return; // los insumos tipo Test no tienen recuperación por reenvío
                         // Recuperación de este insumo: fila aparte marcada "(Recuperación)". Su nota
                         // ya está incorporada en la nota efectiva (promedio) que se ve en las
                         // columnas de nota EFECTIVA de los otros reportes; esta fila es el respaldo
-                        // en detalle de esa recuperación puntual.
+                        // en detalle de esa recuperación puntual. Los insumos tipo Test se
+                        // autocalifican (sin archivo propio), igual que el examen.
                         const claveRec = nptClaveRecuperacionInsumo(tp.id);
-                        const archRec = nptArchivos[est.cedula]?.[`trimestre${t.num}`]?.[claveRec];
+                        const archRec = tp.tipo === 'test' ? null : (nptArchivos[est.cedula]?.[`trimestre${t.num}`]?.[claveRec] || null);
                         const notaRec = nptNotas[est.cedula]?.[`trimestre${t.num}`]?.[claveRec];
                         if (archRec || notaRec) {
                             const iaRec = nptEvaluacionesIA[est.cedula]?.[`trimestre${t.num}`]?.[claveRec];
@@ -7252,9 +7477,35 @@ video {
                         } else {
                             estadoTestHtml = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center text-xs text-slate-500">No disponible por ahora.</div>`;
                         }
+
+                        // ---- Recuperación de este insumo tipo Test (banco de preguntas independiente) ----
+                        const claveRecTest = nptClaveRecuperacionInsumo(tp.id);
+                        const notaRecTest = nptNotas[cedula]?.[`trimestre${t.num}`]?.[claveRecTest] || null;
+                        const recHabTest = nptInsumoRecuperacionEstudianteHabilitado(curso, paralelo, t.num, tp.id, cedula);
+                        let recuperacionTestHtml = '';
+                        if (notaRecTest) {
+                            const notaRecTestVal = numero(notaRecTest.nota);
+                            const notaOriginalTestVal = notaTest ? numero(notaTest.nota) : null;
+                            const seMantieneOriginalTest = notaOriginalTestVal !== null && notaOriginalTestVal > notaRecTestVal;
+                            const notaEfectivaTest = seMantieneOriginalTest ? notaOriginalTestVal : (notaOriginalTestVal !== null ? (notaOriginalTestVal + notaRecTestVal) / 2 : notaRecTestVal);
+                            recuperacionTestHtml = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mt-2 text-center">
+                                <p class="text-xs text-slate-500 font-bold mb-1">🔁 Recuperación de ${escapeHtml(etiquetaTipo)} rendida</p>
+                                <span class="text-xl font-black ${notaEfectivaTest >= 7 ? 'text-emerald-600' : 'text-rose-600'}">${formatearNota(notaEfectivaTest)} <span class="text-sm text-slate-400 font-normal">/ 10</span></span>
+                                <p class="text-[10px] text-purple-600 font-bold mt-0.5">${notaOriginalTestVal !== null ? (seMantieneOriginalTest ? `Se mantiene tu nota original de ${formatearNota(notaOriginalTestVal)}: fue mayor a la recuperación` : `Promedio: original ${formatearNota(notaOriginalTestVal)} + recuperación ${formatearNota(notaRecTestVal)}`) : 'Sin nota original: se tomó solo la recuperación'}</p>
+                                <p class="text-[10px] text-slate-400 mt-1">${notaRecTest.correctas}/${notaRecTest.total} correctas · calificado automáticamente</p>
+                            </div>`;
+                        } else if (recHabTest) {
+                            recuperacionTestHtml = `<div class="bg-purple-50 border border-purple-200 rounded-xl p-3 mt-2 text-center">
+                                <p class="text-xs font-bold text-purple-700 mb-2">🔁 Recuperación de ${escapeHtml(etiquetaTipo)} habilitada para ti</p>
+                                <p class="text-[10px] text-purple-500 mb-2">${notaTest ? `Tu nota actual es ${formatearNota(numero(notaTest.nota))}/10. Si tu recuperación es mayor, tu nota final será el promedio de ambas; si no la superas, se mantiene tu nota actual.` : 'Aún no tienes nota original de este insumo: tu nota final será la de esta recuperación.'}</p>
+                                <button onclick="comenzarInsumoTestRecuperacionNPT(${t.num},'${tp.id}')" class="w-full bg-purple-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-purple-700">🔁 Rendir recuperación de ${escapeHtml(etiquetaTipo)}</button>
+                            </div>`;
+                        }
+
                         return `<div class="mb-3">
                             <p class="text-xs font-bold text-slate-600 mb-1">${tp.icono} ${escapeHtml(etiquetaTipo)}</p>
                             ${estadoTestHtml}
+                            ${recuperacionTestHtml}
                         </div>`;
                     }
 
@@ -7384,7 +7635,7 @@ video {
                     const notaRecVal = notaRec ? numero(notaRec.nota) : (iaRec ? numero(iaRec.nota) : null);
                     const notaOriginalVal = notaNPTDe(cedula, t.num, tp.id);
                     const notaEfectivaVal = notaRec?.verificado
-                        ? (notaOriginalVal !== null ? (notaOriginalVal + notaRecVal) / 2 : notaRecVal)
+                        ? (notaOriginalVal !== null ? (notaOriginalVal > notaRecVal ? notaOriginalVal : (notaOriginalVal + notaRecVal) / 2) : notaRecVal)
                         : null;
                     const recHabGeneral = nptInsumoRecuperacionHabilitado(curso, paralelo, t.num, tp.id);
                     const recHabEstudiante = nptInsumoRecuperacionEstudianteHabilitado(curso, paralelo, t.num, tp.id, cedula);
@@ -7405,7 +7656,7 @@ video {
                                 <div class="flex items-center justify-between">
                                     <div>
                                         <span class="text-xl font-black ${notaEfectivaVal >= 7 ? 'text-emerald-600' : 'text-rose-600'}">${formatearNota(notaEfectivaVal)} <span class="text-sm text-slate-400 font-normal">/ 10</span></span>
-                                        <p class="text-[10px] text-purple-600 font-bold mt-0.5">Nota efectiva del insumo${notaOriginalVal !== null ? ` (promedio: original ${formatearNota(notaOriginalVal)} + recuperación ${formatearNota(notaRecVal)})` : ' (sin nota original: se tomó solo la recuperación)'}</p>
+                                        <p class="text-[10px] text-purple-600 font-bold mt-0.5">Nota efectiva del insumo${notaOriginalVal !== null ? (notaOriginalVal > notaRecVal ? ` (se mantiene tu nota original de ${formatearNota(notaOriginalVal)}: fue mayor a la recuperación)` : ` (promedio: original ${formatearNota(notaOriginalVal)} + recuperación ${formatearNota(notaRecVal)})`) : ' (sin nota original: se tomó solo la recuperación)'}</p>
                                     </div>
                                     <button onclick="imprimirReporteNPT('${claveRec}',${t.num})" class="text-xs bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold">🖨️ Imprimir reporte</button>
                                 </div>
@@ -7413,7 +7664,7 @@ video {
                             </div>`;
                         } else if (iaRec) {
                             recuperacionHtml = `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-2 text-xs text-amber-700">
-                                🔁 Recuperación evaluada automáticamente (${formatearNota(numero(iaRec.nota))}/10) — pendiente de verificación por el docente. Una vez verificada, se promediará con tu nota original para dar tu nota final de este insumo.
+                                🔁 Recuperación evaluada automáticamente (${formatearNota(numero(iaRec.nota))}/10) — pendiente de verificación por el docente. Una vez verificada, se comparará con tu nota original para dar tu nota final de este insumo.
                             </div>`;
                         } else {
                             recuperacionHtml = `<div class="text-xs text-slate-400 mt-2">🔁 Recuperación enviada — pendiente de revisión por el docente.</div>`;
@@ -7422,7 +7673,8 @@ video {
                         recuperacionHtml = `${avisoDevolucionRec}
                         <div class="bg-purple-50 border border-purple-200 rounded-xl p-3 mt-2">
                             <p class="text-xs font-bold text-purple-700 mb-2">🔁 Recuperación de ${escapeHtml(etiquetaTipo)} habilitada para ti</p>
-                            <p class="text-[10px] text-purple-500 mb-2">${notaOriginalVal !== null ? `Tu nota actual es ${formatearNota(notaOriginalVal)}/10. Al calificarse la recuperación, tu nota final de este insumo será el promedio de ambas.` : 'Aún no tienes nota original de este insumo: tu nota final será la de esta recuperación.'}</p>
+                            <p class="text-[10px] text-purple-500 mb-2">${notaOriginalVal !== null ? `Tu nota actual es ${formatearNota(notaOriginalVal)}/10. Si tu recuperación es mayor, tu nota final será el promedio de ambas; si no la superas, se mantiene tu nota actual.` : 'Aún no tienes nota original de este insumo: tu nota final será la de esta recuperación.'}</p>
+                            ${nptRubricaTexto(curso, paralelo, t.num, claveRec) ? `<button type="button" onclick="verRubricaEstudiante(${t.num},'${tp.id}',true)" class="text-xs text-purple-700 font-bold hover:underline mb-2 block">📋 Ver rúbrica de recuperación</button>` : ''}
                             <div class="flex gap-2">
                                 <input type="url" id="npt-url-rec-${t.num}-${tp.id}" placeholder="https://..."
                                     class="flex-1 px-3 py-2 bg-white border rounded-xl text-xs focus:ring-2 focus:ring-purple-500">
@@ -7574,7 +7826,12 @@ video {
                 // Limpiar observación de devolución al subir de nuevo
                 if (nptObservacionesDevolucion[cedula]?.[`trimestre${numTrimestre}`]?.[tipo]) {
                     try { await borrarValorFirebase(`nptObservacionesDevolucion/${cedula}/trimestre${numTrimestre}/${tipo}`); } catch(_) {}
-                    delete nptObservacionesDevolucion[cedula][`trimestre${numTrimestre}`][tipo];
+                    // El await anterior le da tiempo al listener en tiempo real de
+                    // nptObservacionesDevolucion (que acabamos de vaciar en el servidor) a
+                    // REEMPLAZAR por completo esta variable global — por eso el delete de abajo
+                    // usa "?." : si para cuando llegamos aquí el objeto ya cambió (o el nodo del
+                    // estudiante ya no existe), no debe reventar, solo no hacer nada (ya está limpio).
+                    delete nptObservacionesDevolucion[cedula]?.[`trimestre${numTrimestre}`]?.[tipo];
                 }
                 if (!nptArchivos[cedula]) nptArchivos[cedula] = {};
                 if (!nptArchivos[cedula][`trimestre${numTrimestre}`]) nptArchivos[cedula][`trimestre${numTrimestre}`] = {};
@@ -7655,7 +7912,12 @@ video {
                 await guardarMetaArchivoNPT(cedula, numTrimestre, claveRec, registro);
                 if (nptObservacionesDevolucion[cedula]?.[`trimestre${numTrimestre}`]?.[claveRec]) {
                     try { await borrarValorFirebase(`nptObservacionesDevolucion/${cedula}/trimestre${numTrimestre}/${claveRec}`); } catch(_) {}
-                    delete nptObservacionesDevolucion[cedula][`trimestre${numTrimestre}`][claveRec];
+                    // Ver comentario equivalente en guardarURLInsumo: el await anterior puede dejar
+                    // que el listener en tiempo real reemplace nptObservacionesDevolucion por completo
+                    // (típicamente porque el docente ACABA de eliminar la entrega, lo que ya vació y
+                    // podó ese nodo en el servidor) — el delete de abajo usa "?." para no reventar
+                    // si al llegar aquí el objeto/nodo ya no existe.
+                    delete nptObservacionesDevolucion[cedula]?.[`trimestre${numTrimestre}`]?.[claveRec];
                 }
                 if (!nptArchivos[cedula]) nptArchivos[cedula] = {};
                 if (!nptArchivos[cedula][`trimestre${numTrimestre}`]) nptArchivos[cedula][`trimestre${numTrimestre}`] = {};
@@ -7743,7 +8005,7 @@ video {
                 // Limpiar observación de devolución al subir de nuevo
                 if (nptObservacionesDevolucion[cedula]?.[`trimestre${numTrimestre}`]?.[tipo]) {
                     try { await borrarValorFirebase(`nptObservacionesDevolucion/${cedula}/trimestre${numTrimestre}/${tipo}`); } catch(_) {}
-                    delete nptObservacionesDevolucion[cedula][`trimestre${numTrimestre}`][tipo];
+                    delete nptObservacionesDevolucion[cedula]?.[`trimestre${numTrimestre}`]?.[tipo];
                 }
 
                 if (!nptArchivos[cedula]) nptArchivos[cedula] = {};
@@ -8009,13 +8271,13 @@ video {
                 // ---- Recuperaciones registradas: detalle de cómo se llegó a la nota efectiva ----
                 html += `<h3>🔁 Recuperaciones registradas — ${escapeHtml(g)}</h3>`;
                 if (recuperacionesGrupo.length) {
-                    html += `<table><tr><th class="col-num">#</th><th class="col-nombre">Estudiante</th><th class="col-cedula">Cédula</th><th>Insumo / Examen</th><th class="right">Nota original</th><th class="right">Nota recuperación</th><th class="right">Nota efectiva (promedio)</th></tr>`;
+                    html += `<table><tr><th class="col-num">#</th><th class="col-nombre">Estudiante</th><th class="col-cedula">Cédula</th><th>Insumo / Examen</th><th class="right">Nota original</th><th class="right">Nota recuperación</th><th class="right">Nota efectiva</th></tr>`;
                     recuperacionesGrupo.forEach((r, i) => {
                         const original = notaNPTDe(r.e.cedula, t.num, r.tipo);
                         const efectiva = notaEfectivaNPT(r.e.cedula, t.num, r.tipo);
                         html += `<tr><td class="center">${i+1}</td><td>${escapeHtml(r.e.nombre)}</td><td>${escapeHtml(r.e.cedula)}</td><td>${r.etiqueta}</td><td class="right">${original !== null ? formatearNota(original) : '—'}</td><td class="right">${formatearNota(r.nota)}</td><td class="right"><strong>${formatearNota(efectiva)}</strong></td></tr>`;
                     });
-                    html += `</table><p class="meta">La nota efectiva (promedio) es la que se usó en la fórmula del Promedio de Insumos / del Examen de este trimestre. Cuando no hay nota original, la efectiva es la de recuperación sola.</p>`;
+                    html += `</table><p class="meta">La nota efectiva es la que se usó en la fórmula del Promedio de Insumos / del Examen de este trimestre: si la recuperación superó a la original, es el promedio de ambas; si no, es la original. Cuando no hay nota original, la efectiva es la de recuperación sola.</p>`;
                 } else {
                     html += `<p class="meta">Sin recuperaciones registradas en este trimestre para ${escapeHtml(g)}.</p>`;
                 }
@@ -8134,13 +8396,13 @@ video {
             if (nERecInd !== null) recuperaciones.push({ etiqueta: '📝 Examen', tipo: 'examen', nota: nERecInd });
             html += `<h2>🔁 Recuperaciones registradas</h2>`;
             if (recuperaciones.length) {
-                html += `<table><tr><th>Insumo / Examen</th><th class="right">Nota original</th><th class="right">Nota recuperación</th><th class="right">Nota efectiva (promedio)</th></tr>`;
+                html += `<table><tr><th>Insumo / Examen</th><th class="right">Nota original</th><th class="right">Nota recuperación</th><th class="right">Nota efectiva</th></tr>`;
                 recuperaciones.forEach(r => {
                     const original = notaNPTDe(est.cedula, t.num, r.tipo);
                     const efectiva = notaEfectivaNPT(est.cedula, t.num, r.tipo);
                     html += `<tr><td>${r.etiqueta}</td><td class="right">${original !== null ? formatearNota(original) : '—'}</td><td class="right">${formatearNota(r.nota)}</td><td class="right"><strong>${formatearNota(efectiva)}</strong></td></tr>`;
                 });
-                html += `</table><p class="meta">La nota efectiva (promedio) es la que se usó arriba, en la tabla principal y en la Nota Final del trimestre. Cuando no hay nota original, la efectiva es la de recuperación sola.</p>`;
+                html += `</table><p class="meta">La nota efectiva es la que se usó arriba, en la tabla principal y en la Nota Final del trimestre: si la recuperación superó a la original, es el promedio de ambas; si no, es la original. Cuando no hay nota original, la efectiva es la de recuperación sola.</p>`;
             } else {
                 html += `<p class="meta">Sin recuperaciones registradas en este trimestre.</p>`;
             }
@@ -9047,6 +9309,8 @@ video {
                     const remote = await leerValorRutaFirebase(`nptArchivos/${cedula}/trimestre${numTrimestre}/${tipo}`);
                     if (remote?.base64) {
                         base64 = remote.base64;
+                        if (!nptArchivos[cedula]) nptArchivos[cedula] = {};
+                        if (!nptArchivos[cedula][`trimestre${numTrimestre}`]) nptArchivos[cedula][`trimestre${numTrimestre}`] = {};
                         nptArchivos[cedula][`trimestre${numTrimestre}`][tipo] = remote;
                     } else { alert('No se pudo recuperar el archivo.'); return; }
                 } catch(e) { alert(`Error: ${e.message}`); return; }
@@ -9122,6 +9386,7 @@ video {
         window.comenzarExamenTrimestre = comenzarExamenTrimestre;
         window.comenzarExamenRecuperacionTrimestre = comenzarExamenRecuperacionTrimestre;
         window.comenzarInsumoTestNPT = comenzarInsumoTestNPT;
+        window.comenzarInsumoTestRecuperacionNPT = comenzarInsumoTestRecuperacionNPT;
         window.avanzarPreguntaManual = avanzarPreguntaManual;
         window.cambiarRespuestaRevision = cambiarRespuestaRevision;
         window.finalizarExamenManual = finalizarExamenManual;
