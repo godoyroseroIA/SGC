@@ -2162,6 +2162,13 @@ video {
                             <!-- generado por JS -->
                         </div>
                     </div>
+                    <!-- Control del Examen Supletorio (anual, NO por trimestre) -->
+                    <div class="bg-amber-50 rounded-xl p-4 mb-5 border border-amber-200">
+                        <h4 class="font-bold mb-3 text-sm text-amber-800">🎓 Examen Supletorio (anual)</h4>
+                        <div id="npt-control-supletorio">
+                            <!-- generado por JS -->
+                        </div>
+                    </div>
                     <!-- Entregas recibidas -->
                     <div class="bg-white rounded-xl border p-4">
                         <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
@@ -2262,6 +2269,8 @@ video {
                                     <th class="p-2 text-center bg-indigo-50 npt-th-cuadro-fijo">Promedio Insumos (70%)</th>
                                     <th class="p-2 text-center npt-th-cuadro-fijo">📝 Examen (30%)</th>
                                     <th class="p-2 text-center bg-emerald-50 npt-th-cuadro-fijo">Nota Final</th>
+                                    <th class="p-2 text-center bg-amber-50" title="Promedio de los 3 trimestres — no depende del filtro de trimestre de arriba">Promedio Anual</th>
+                                    <th class="p-2 text-center bg-amber-50" title="Resultado final de la materia — no depende del filtro de trimestre de arriba">Estado Final</th>
                                 </tr>
                             </thead>
                             <tbody id="cuadro-general-body"></tbody>
@@ -2472,6 +2481,11 @@ video {
 
             <!-- Tarjetas de trimestres -->
             <div id="npt-trimestres-container" class="space-y-4">
+                <!-- generado por JS -->
+            </div>
+
+            <!-- Resultado Anual y Examen Supletorio (solo visible con los 3 trimestres cerrados) -->
+            <div id="npt-resultado-anual-container" class="mt-4">
                 <!-- generado por JS -->
             </div>
         </div>
@@ -2795,6 +2809,58 @@ video {
             <div class="grid grid-cols-2 gap-3 border-t px-6 py-3 flex-shrink-0 bg-slate-50">
                 <button onclick="cerrarGestionTrimestreNPT()" class="bg-slate-100 text-slate-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-200">Cancelar</button>
                 <button onclick="guardarGestionTrimestreNPT()" id="npt-btn-guardar-gestion" class="bg-brand-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-brand-700">💾 Guardar cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gestión Examen SUPLETORIO (anual, curso/paralelo — NO por trimestre) -->
+    <div id="npt-supletorio-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between px-6 py-4 border-b flex-shrink-0">
+                <div>
+                    <h3 class="text-lg font-black">🎓 Gestionar Examen Supletorio</h3>
+                    <p id="npt-supletorio-titulo" class="text-xs text-slate-500"></p>
+                </div>
+                <button onclick="cerrarGestionSupletorioNPT()" class="text-slate-400 hover:text-slate-700 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+                <section>
+                    <label class="block text-sm font-bold mb-1">📝 Banco de preguntas (JSON)</label>
+                    <p class="text-[11px] text-slate-400 mb-2">Lista de objetos con "pregunta", "opciones" (lista de {id, texto}) y "correcta" (el id de la opción correcta). Es un único banco válido para todo el año lectivo — no se repite por trimestre.</p>
+                    <textarea id="npt-supletorio-json" rows="8" class="w-full text-xs font-mono border rounded-xl p-3" placeholder='[{"pregunta":"...","opciones":[{"id":"a","texto":"..."},{"id":"b","texto":"..."}],"correcta":"a"}]'></textarea>
+                    <p id="npt-supletorio-json-error" class="hidden text-xs text-rose-600 font-bold mt-1"></p>
+                </section>
+                <section class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-bold mb-1">🔢 Preguntas por intento</label>
+                        <input type="number" id="npt-supletorio-cantidad" min="1" class="w-full text-sm border rounded-xl px-3 py-2" placeholder="20">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-1">⏳ Fecha máxima</label>
+                        <input type="datetime-local" id="npt-supletorio-fecha-maxima" class="w-full text-sm border rounded-xl px-3 py-2">
+                    </div>
+                </section>
+                <section>
+                    <label class="block text-sm font-bold mb-1">👥 Estudiantes con derecho a supletorio</label>
+                    <p class="text-[11px] text-slate-400 mb-2">Solo aparecen aquí los estudiantes cuyo promedio de los 3 trimestres está entre 4.01 y 6.99, o cuyo plazo ya venció sin rendir. Desmarca a quien no deba rendirlo.</p>
+                    <div class="border rounded-xl overflow-hidden">
+                        <table class="w-full text-xs">
+                            <thead class="bg-slate-50">
+                                <tr>
+                                    <th class="p-2 text-center w-10">✓</th>
+                                    <th class="p-2 text-left">Estudiante</th>
+                                    <th class="p-2 text-center">Promedio anual</th>
+                                    <th class="p-2 text-center">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="npt-supletorio-estudiantes-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+            <div class="grid grid-cols-2 gap-3 border-t px-6 py-3 flex-shrink-0 bg-slate-50">
+                <button onclick="cerrarGestionSupletorioNPT()" class="bg-slate-100 text-slate-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-200">Cancelar</button>
+                <button onclick="guardarGestionSupletorioNPT()" id="npt-btn-guardar-supletorio" class="bg-amber-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-amber-700">💾 Guardar cambios</button>
             </div>
         </div>
     </div>
@@ -4115,7 +4181,51 @@ video {
             solicitarPantallaCompletaExamen(() => mostrarPreguntaExamen());
         }
 
-        // ---- Insumo tipo TEST: mismo motor/estilo del examen (pantalla completa, preguntas una a
+        // ---- Examen SUPLETORIO: mismo motor que el examen trimestral (banco propio, pantalla completa,
+        // 60s/pregunta, autocalificación), pero es un evento ÚNICO Y ANUAL por curso/paralelo — no está
+        // indexado por trimestre. Solo accesible cuando el promedio de los 3 trimestres del estudiante
+        // está entre 4.01 y 6.99 (ver nptEstadoAnualNPT/nptPuedeRendirSupletorio). La nota obtenida
+        // REEMPLAZA el resultado anual: ≥7 aprueba la materia, <7 la pierde (no se promedia).
+        function comenzarExamenSupletorio() {
+            if (!estudianteActual) return;
+            const { curso, paralelo, cedula } = estudianteActual;
+            if (!nptPuedeRendirSupletorio(cedula)) {
+                alert('No puedes rendir el examen supletorio en este momento: no está habilitado para ti, el plazo ya venció, o ya lo rendiste.');
+                return;
+            }
+            const bancoOriginal = nptSupletorioPreguntasDe(curso, paralelo);
+            const cantidadConfigurada = nptSupletorioCantidadPreguntas(curso, paralelo);
+            if (!confirm(`Vas a iniciar el examen SUPLETORIO. Se te presentarán ${Math.min(cantidadConfigurada, bancoOriginal.length)} preguntas, una a la vez, con 60 segundos para responder cada una.\n\nEsta es tu última oportunidad de aprobar la materia: necesitas una nota de 7/10 o más para aprobarla. La nota que obtengas REEMPLAZA el resultado del año — no se promedia con tus trimestres.\n\nEl examen se abre en pantalla completa y no debes salir de ella, cambiar de pestaña ni minimizar la ventana: si lo haces, el examen se finalizará automáticamente con lo que hayas respondido hasta ese momento.\n\nUna vez iniciado no podrás pausarlo ni repetirlo. ¿Deseas continuar?`)) return;
+
+            const bancoIndexado = bancoOriginal.map((q, i) => ({ ...q, _idxBanco: i }));
+            const barajado = mezclarArrayExamen(bancoIndexado);
+            const cantidad = Math.min(cantidadConfigurada, barajado.length);
+
+            examenContexto = {
+                trimestre: 'supletorio',                          // clave textual: no es un trimestre numérico, ver nptExamenBloqueos
+                tipoExamen: 'supletorio',
+                promedioAnualPrevio: nptEstadoAnualNPT(cedula).promedioAnual,
+                preguntasActivas: barajado.slice(0, cantidad),
+                poolReemplazo: barajado.slice(cantidad),
+                reemplazadas: {},
+                respuestas: {},
+                horaInicio: new Date(),
+                horaFin: null,
+                fase: 'preguntas',
+                bancoAgotadoAvisado: false,
+                intentosSalida: 0,
+                motivoSalida: null,
+                finalizandoPorSalida: false
+            };
+            respuestas = examenContexto.respuestas;
+            indicePregunta = 0;
+            document.getElementById('quiz-fase-preguntas').classList.remove('hidden');
+            document.getElementById('quiz-fase-revision').classList.add('hidden');
+            document.getElementById('quiz-fase-finalizar').classList.add('hidden');
+            actualizarBarraMetaExamen();
+            mostrarPantalla('screen-quiz');
+            solicitarPantallaCompletaExamen(() => mostrarPreguntaExamen());
+        }
         // una, temporizadores, revisión, finalización), pero con su PROPIO banco de preguntas y su
         // PROPIA cantidad de preguntas por estudiante (configurable, 10 por defecto). Se autocalifica
         // y se muestra al estudiante de inmediato, igual que el examen — sin verificación docente. ----
@@ -4632,6 +4742,7 @@ video {
             const { trimestre, preguntasActivas: banco, respuestas: resp, tipoExamen, insumoId } = examenContexto;
             const esRecuperacion = tipoExamen === 'recuperacion';
             const esInsumoTest = tipoExamen === 'insumo-test';
+            const esSupletorio = tipoExamen === 'supletorio';
             const campoNota = esInsumoTest ? insumoId : (esRecuperacion ? 'examenRecuperacion' : 'examen');
             examenContexto.horaFin = new Date();
             let correctas = 0;
@@ -4642,10 +4753,59 @@ video {
                 return { pregunta: q.pregunta, respuestaDada: respuestaDada || null, correcta: q.correcta, ok };
             });
             const total = banco.length;
-            // Insumo tipo Test: la cantidad de preguntas por estudiante es configurable (no fija en
-            // 20 como el examen), así que los puntos por acierto se calculan sobre 10 / total.
-            const puntosPorAcierto = esInsumoTest ? (total > 0 ? 10 / total : 0) : NPT_EXAMEN_PUNTOS_POR_ACIERTO;
+            // Insumo tipo Test y Supletorio: la cantidad de preguntas por estudiante es configurable
+            // (no fija en 20 como el examen), así que los puntos por acierto se calculan sobre 10 / total.
+            const puntosPorAcierto = (esInsumoTest || esSupletorio) ? (total > 0 ? 10 / total : 0) : NPT_EXAMEN_PUNTOS_POR_ACIERTO;
             const nota = Math.round(correctas * puntosPorAcierto * 100) / 100;
+
+            // El supletorio es un registro ANUAL (no por trimestre): se guarda aparte, en
+            // nptNotas/{cedula}/supletorio, y su nota REEMPLAZA el resultado del año — no se
+            // promedia con los trimestres (≥7 aprueba la materia, <7 la pierde).
+            if (esSupletorio) {
+                const estadoFinal = nota >= NPT_SUPLETORIO_NOTA_MINIMA_APRUEBA ? 'aprueba' : 'pierde';
+                const registroSupletorio = {
+                    nota, correctas, total, detalle,
+                    fecha: new Date().toISOString(),
+                    horaInicio: examenContexto.horaInicio.toISOString(),
+                    horaFin: examenContexto.horaFin.toISOString(),
+                    cedula: estudianteActual.cedula, nombre: estudianteActual.nombre,
+                    tipo: 'examen_supletorio',
+                    promedioAnualPrevio: examenContexto.promedioAnualPrevio ?? null,
+                    estadoFinal,
+                    intentosSalida: examenContexto.intentosSalida || 0,
+                    motivoSalida
+                };
+                try {
+                    await guardarValorFirebase(`nptNotas/${estudianteActual.cedula}/supletorio`, registroSupletorio);
+                    if (!nptNotas[estudianteActual.cedula]) nptNotas[estudianteActual.cedula] = {};
+                    nptNotas[estudianteActual.cedula].supletorio = registroSupletorio;
+                } catch(e) {
+                    console.error('Error guardando resultado del supletorio:', e);
+                    alert('Hubo un problema al guardar tu examen supletorio. Vuelve a intentarlo antes de cerrar esta ventana.');
+                    return;
+                }
+                actualizarBarraMetaExamen();
+                const tituloResultadoSup = document.getElementById('result-titulo');
+                if (tituloResultadoSup) tituloResultadoSup.innerText = 'Examen Supletorio Completado';
+                document.getElementById('result-fecha').innerText = formatearFechaExamen(examenContexto.horaInicio);
+                document.getElementById('result-hora-inicio').innerText = formatearHoraExamen(examenContexto.horaInicio);
+                document.getElementById('result-hora-fin').innerText = formatearHoraExamen(examenContexto.horaFin);
+                document.getElementById('result-mensaje').innerText = estadoFinal === 'aprueba'
+                    ? 'Alcanzaste la nota mínima: apruebas la materia.'
+                    : `No alcanzaste la nota mínima (${NPT_SUPLETORIO_NOTA_MINIMA_APRUEBA}/10): pierdes la materia.`;
+                const avisoSalidaSup = document.getElementById('result-aviso-salida');
+                if (avisoSalidaSup) {
+                    if (motivoSalida) {
+                        avisoSalidaSup.textContent = `⚠️ Tu examen se finalizó automáticamente. Motivo: ${motivoSalida}`;
+                        avisoSalidaSup.classList.remove('hidden');
+                    } else {
+                        avisoSalidaSup.classList.add('hidden');
+                    }
+                }
+                mostrarPantalla('screen-results');
+                return;
+            }
+
             const registro = {
                 nota, correctas, total, detalle,
                 fecha: new Date().toISOString(),
@@ -4963,6 +5123,20 @@ video {
         let nptObservacionesDevolucion = {}; // { cedula: { trimestreN: { tipo: { fecha, docente, motivo } } } }
         let nptNotaModalCtx = null; // { cedula, nombre, trimestre, tipo }
         let nptGestionCtx = null;   // { trimestre } — trimestre actualmente en gestión (modal docente)
+
+        // ==================== EXAMEN SUPLETORIO (anual, por curso/paralelo) ====================
+        // A diferencia del examen trimestral, el supletorio NO se indexa por trimestre: es un único
+        // banco de preguntas por curso/paralelo, válido para todo el año lectivo. Estructura RTDB:
+        //   nptSupletorioPreguntas/{curso}/{paralelo}        → [ {pregunta, opciones:[{id,texto}], correcta} ... ]
+        //   nptSupletorioConfig/{curso}/{paralelo}           → { habilitado: bool, fechaMaxima: string|null, cantidadPreguntas: number|null }
+        //   nptSupletorioHabilitacionEstudiantes/{curso}/{paralelo}/{cedula} → bool
+        //   nptNotas/{cedula}/supletorio                     → { nota, correctas, total, detalle, fecha, horaInicio, horaFin,
+        //                                                        promedioAnualPrevio, estadoFinal: 'aprueba'|'pierde', ... }
+        let nptSupletorioPreguntas = {};
+        let nptSupletorioConfig = {};
+        let nptSupletorioHabilitacionEstudiantes = {};
+        const NPT_SUPLETORIO_NUM_PREGUNTAS_DEFECTO = 20; // igual al examen trimestral, salvo que el docente configure otra cantidad
+        const NPT_SUPLETORIO_NOTA_MINIMA_APRUEBA = 7;    // nota ≥ 7 aprueba la materia; < 7 la pierde (reemplaza el resultado anual)
         let nptInicializado = false;
         let nptInitPromise = null;
         let nptListenersActivos = false;
@@ -5162,13 +5336,26 @@ video {
                 nptNotas = val && typeof val === 'object' ? val : {};
             } catch(e) { nptNotas = {}; }
         }
+        async function cargarSupletorioPreguntasNPT() {
+            try { nptSupletorioPreguntas = (await leerValorRutaFirebase('nptSupletorioPreguntas')) || {}; }
+            catch(e) { nptSupletorioPreguntas = {}; }
+        }
+        async function cargarSupletorioConfigNPT() {
+            try { nptSupletorioConfig = (await leerValorRutaFirebase('nptSupletorioConfig')) || {}; }
+            catch(e) { nptSupletorioConfig = {}; }
+        }
+        async function cargarSupletorioHabilitacionEstudiantesNPT() {
+            try { nptSupletorioHabilitacionEstudiantes = (await leerValorRutaFirebase('nptSupletorioHabilitacionEstudiantes')) || {}; }
+            catch(e) { nptSupletorioHabilitacionEstudiantes = {}; }
+        }
 
         async function iniciarModuloNPT() {
             await Promise.all([
                 cargarConfigNPT(), cargarHabilitacionEstudiantesNPT(), cargarExamenHabilitacionEstudiantesNPT(),
                 cargarExamenRecuperacionHabilitacionEstudiantesNPT(), cargarInsumoRecuperacionHabilitacionEstudiantesNPT(),
                 cargarExamenesNPT(), cargarExamenesRecuperacionNPT(), cargarSolicitudesRecuperacionNPT(), cargarInsumoPreguntasNPT(), cargarRubricasNPT(), cargarArchivosNPT(), cargarNotasNPT(), cargarEvaluacionesIANPT(),
-                cargarObservacionesDevolucionNPT()
+                cargarObservacionesDevolucionNPT(),
+                cargarSupletorioPreguntasNPT(), cargarSupletorioConfigNPT(), cargarSupletorioHabilitacionEstudiantesNPT()
             ]);
             nptInicializado = true;
             actualizarBadgeSolicitudesRecuperacionNPT();
@@ -5233,6 +5420,18 @@ video {
                     nptObservacionesDevolucion = snap.val() || {};
                     renderTrimestresEstudiante();
                 });
+                database.ref('nptSupletorioPreguntas').on('value', snap => {
+                    nptSupletorioPreguntas = snap.val() || {};
+                });
+                database.ref('nptSupletorioConfig').on('value', snap => {
+                    nptSupletorioConfig = snap.val() || {};
+                    renderControlTrimestres();
+                    renderTrimestresEstudiante();
+                });
+                database.ref('nptSupletorioHabilitacionEstudiantes').on('value', snap => {
+                    nptSupletorioHabilitacionEstudiantes = snap.val() || {};
+                    renderTrimestresEstudiante();
+                });
                 // Listeners de contadores de acceso
                 database.ref('configuracion/contadores').on('value', snap => {
                     const c = snap.val() || {};
@@ -5283,6 +5482,32 @@ video {
         }
         function nptRubricaTexto(curso, paralelo, n, tipo) {
             return nptNodoTrimestre(nptRubricas, curso, paralelo, n)?.[tipo]?.texto || '';
+        }
+
+        // ---- Examen Supletorio: helpers de acceso (curso/paralelo, SIN trimestre) ----
+        function nptSupletorioPreguntasDe(curso, paralelo) {
+            const banco = nptNodoCursoParalelo(nptSupletorioPreguntas, curso, paralelo);
+            return Array.isArray(banco) ? banco : [];
+        }
+        function nptSupletorioInfo(curso, paralelo) {
+            return nptNodoCursoParalelo(nptSupletorioConfig, curso, paralelo);
+        }
+        function nptSupletorioHabilitadoGeneral(curso, paralelo) {
+            return !!nptSupletorioInfo(curso, paralelo)?.habilitado;
+        }
+        function nptSupletorioFechaMaxima(curso, paralelo) {
+            return nptSupletorioInfo(curso, paralelo)?.fechaMaxima || null;
+        }
+        function nptSupletorioCantidadPreguntas(curso, paralelo) {
+            const n = Number(nptSupletorioInfo(curso, paralelo)?.cantidadPreguntas);
+            return Number.isFinite(n) && n > 0 ? n : NPT_SUPLETORIO_NUM_PREGUNTAS_DEFECTO;
+        }
+        function nptSupletorioEstudianteHabilitado(curso, paralelo, cedula) {
+            const mapa = nptNodoCursoParalelo(nptSupletorioHabilitacionEstudiantes, curso, paralelo);
+            // Igual que en el examen trimestral: si el docente no ha definido el estado individual,
+            // se asume habilitado mientras el interruptor general del supletorio esté activo.
+            if (!mapa || mapa[cedula] === undefined) return nptSupletorioHabilitadoGeneral(curso, paralelo);
+            return !!mapa[cedula];
         }
 
         // Muestra al estudiante, antes de que suba su insumo, el mismo texto de rúbrica que se usa
@@ -5572,6 +5797,65 @@ video {
                     </button>
                 </div>`;
             }).join('');
+            renderControlSupletorio();
+        }
+
+        // ==================== Control del Examen Supletorio (docente) ====================
+        function renderControlSupletorio() {
+            const cont = document.getElementById('npt-control-supletorio');
+            if (!cont) return;
+            if (!cursoActual || !paraleloActual) {
+                cont.innerHTML = `<div class="text-center text-sm text-slate-400 py-4">
+                    ⚠️ Selecciona un curso y un paralelo arriba (filtro general) para gestionar el supletorio.</div>`;
+                return;
+            }
+            const habGeneral = nptSupletorioHabilitadoGeneral(cursoActual, paraleloActual);
+            const fechaMax = nptSupletorioFechaMaxima(cursoActual, paraleloActual);
+            const banco = nptSupletorioPreguntasDe(cursoActual, paraleloActual);
+            const alumnos = estudiantesFiltrados();
+            const elegibles = alumnos.filter(e => nptEstadoAnualNPT(e.cedula).estado === 'supletorio').length;
+            const pendientes = alumnos.filter(e => nptEstadoAnualNPT(e.cedula).estado === 'pendiente').length;
+            cont.innerHTML = `<div class="bg-white border-2 ${habGeneral ? 'border-amber-400' : 'border-slate-200'} rounded-xl p-3">
+                <div class="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                    <span class="font-bold text-sm">${escapeHtml(cursoActual)} "${escapeHtml(paraleloActual)}"</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full font-bold ${habGeneral ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}">${habGeneral ? '🟢 Habilitado' : '🔴 Cerrado'}</span>
+                </div>
+                <p class="text-xs text-slate-500 mb-1">${banco.length} pregunta(s) en el banco · ${elegibles} estudiante(s) con derecho a supletorio${pendientes ? ` · ${pendientes} con plazo vencido sin rendir` : ''}</p>
+                <p class="text-xs text-slate-400 mb-2">${fechaMax ? `Fecha máxima: ${escapeHtml(formatearFechaMaxima(fechaMax))}` : 'Sin fecha límite configurada'}</p>
+                <div class="flex gap-2">
+                    <button onclick="toggleSupletorioGeneral()"
+                        class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${habGeneral ? 'bg-rose-100 text-rose-700 hover:bg-rose-200' : 'bg-amber-600 text-white hover:bg-amber-700'}">
+                        ${habGeneral ? '🔒 Cerrar todos' : '🔓 Habilitar todos'}
+                    </button>
+                    <button onclick="abrirGestionSupletorioNPT()"
+                        class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-white hover:bg-slate-900">
+                        ⚙️ Gestionar
+                    </button>
+                </div>
+            </div>`;
+        }
+        async function toggleSupletorioGeneral() {
+            if (!cursoActual || !paraleloActual) { alert('Selecciona curso y paralelo primero.'); return; }
+            const cv = sanitizarClave(cursoActual), pv = sanitizarClave(paraleloActual);
+            const actual = nptSupletorioHabilitadoGeneral(cursoActual, paraleloActual);
+            const nuevoEstado = !actual;
+            if (nuevoEstado && nptSupletorioPreguntasDe(cursoActual, paraleloActual).length === 0) {
+                alert('No puedes habilitar el supletorio: aún no has cargado su banco de preguntas. Usa "⚙️ Gestionar".');
+                return;
+            }
+            if (!confirm(`¿${nuevoEstado ? 'Habilitar' : 'Cerrar'} el examen supletorio para ${cursoActual} "${paraleloActual}"?`)) return;
+            if (!nptSupletorioConfig[cv]) nptSupletorioConfig[cv] = {};
+            if (!nptSupletorioConfig[cv][pv]) nptSupletorioConfig[cv][pv] = {};
+            nptSupletorioConfig[cv][pv].habilitado = nuevoEstado;
+            renderControlSupletorio();
+            try {
+                await guardarValorFirebase(`nptSupletorioConfig/${cv}/${pv}/habilitado`, nuevoEstado);
+            } catch(e) {
+                console.error('Error guardando habilitación del supletorio:', e);
+                nptSupletorioConfig[cv][pv].habilitado = actual;
+                renderControlSupletorio();
+                alert('Error al guardar. Revisa la conexión.');
+            }
         }
 
         async function toggleExamenTrimestre(num) {
@@ -5953,6 +6237,146 @@ video {
         function cerrarGestionTrimestreNPT() {
             document.getElementById('npt-gestion-modal').classList.add('hidden');
             nptGestionCtx = null;
+        }
+
+        // ==================== Modal de gestión del Examen SUPLETORIO (docente) ====================
+        function abrirGestionSupletorioNPT() {
+            if (!cursoActual || !paraleloActual) { alert('Selecciona curso y paralelo primero.'); return; }
+            document.getElementById('npt-supletorio-titulo').textContent = `${cursoActual} "${paraleloActual}"`;
+            const banco = nptSupletorioPreguntasDe(cursoActual, paraleloActual);
+            document.getElementById('npt-supletorio-json').value = banco.length ? JSON.stringify(banco, null, 2) : '';
+            document.getElementById('npt-supletorio-json-error')?.classList.add('hidden');
+            document.getElementById('npt-supletorio-cantidad').value = nptSupletorioCantidadPreguntas(cursoActual, paraleloActual);
+            const fechaMax = nptSupletorioFechaMaxima(cursoActual, paraleloActual) || '';
+            document.getElementById('npt-supletorio-fecha-maxima').value = aDatetimeLocalValue(fechaMax);
+
+            const cont = document.getElementById('npt-supletorio-estudiantes-body');
+            const alumnos = estudiantesFiltrados()
+                .map(e => ({ est: e, info: nptEstadoAnualNPT(e.cedula) }))
+                .filter(x => x.info.estado === 'supletorio' || x.info.estado === 'pendiente' || x.info.viaSupletorio)
+                .sort((a, b) => claveApellidoNPT(a.est.nombre).localeCompare(claveApellidoNPT(b.est.nombre)));
+            if (alumnos.length === 0) {
+                cont.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">Ningún estudiante de este curso/paralelo tiene derecho a supletorio por ahora.</td></tr>`;
+            } else {
+                cont.innerHTML = alumnos.map(({ est, info }) => {
+                    // Ya rindió el supletorio (aprobó o perdió por esa vía): se muestra el resultado
+                    // y la opción de eliminarlo para que pueda repetirlo, en vez del checkbox de habilitación.
+                    if (info.viaSupletorio) {
+                        const aprobo = info.estado === 'aprueba';
+                        return `<tr class="border-t bg-slate-50">
+                            <td class="p-2 text-center text-slate-300">—</td>
+                            <td class="p-2">${escapeHtml(est.nombre)}</td>
+                            <td class="p-2 text-center font-bold">${formatearNota(info.promedioAnual)}</td>
+                            <td class="p-2 text-center">
+                                <span class="px-2 py-0.5 rounded-full font-bold text-[11px] ${aprobo ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${aprobo ? '✅ Aprobó' : '⛔ Perdió'} (${formatearNota(info.notaSupletorio)}/10)</span><br>
+                                <button onclick="eliminarSupletorioNPT('${escapeHtml(est.cedula)}','${escapeHtml(est.nombre).replace(/'/g,"\\'")}')" class="text-[11px] bg-rose-100 text-rose-700 px-2 py-1 rounded-lg hover:bg-rose-200 mt-1" title="Elimina el supletorio rendido para que el estudiante pueda volver a rendirlo">🗑️ Eliminar y permitir repetir</button>
+                            </td>
+                        </tr>`;
+                    }
+                    const hab = nptSupletorioEstudianteHabilitado(cursoActual, paraleloActual, est.cedula);
+                    return `<tr class="border-t">
+                        <td class="p-2 text-center"><input type="checkbox" class="npt-check-supletorio-estudiante w-4 h-4" data-cedula="${escapeHtml(est.cedula)}" ${hab ? 'checked' : ''}></td>
+                        <td class="p-2">${escapeHtml(est.nombre)}</td>
+                        <td class="p-2 text-center font-bold">${formatearNota(info.promedioAnual)}</td>
+                        <td class="p-2 text-center">${info.estado === 'pendiente' ? '<span class="text-slate-500">⏳ Plazo vencido</span>' : '<span class="text-amber-600">📘 Supletorio</span>'}</td>
+                    </tr>`;
+                }).join('');
+            }
+            document.getElementById('npt-supletorio-modal').classList.remove('hidden');
+        }
+        async function eliminarSupletorioNPT(cedula, nombre) {
+            const reg = nptNotas[cedula]?.supletorio;
+            if (!reg) { alert('No hay examen supletorio registrado para este estudiante.'); return; }
+            if (!confirm(`🗑️ ¿Eliminar el examen supletorio de ${nombre}?\n\nEl estudiante podrá volver a rendirlo desde cero (con nuevas preguntas aleatorias del banco). Esta acción no se puede deshacer.`)) return;
+
+            const authOk = await ensureAuth();
+            try {
+                if (authOk) await borrarValorFirebase(`nptNotas/${cedula}/supletorio`);
+                if (nptNotas[cedula]) delete nptNotas[cedula].supletorio;
+                abrirGestionSupletorioNPT(); // refresca la tabla del modal con el estudiante ya vuelto a 'supletorio'
+                renderControlSupletorio();
+                renderTrimestresEstudiante();
+                renderCuadroGeneral();
+                await registrarAuditoria('eliminar_supletorio', `Examen supletorio eliminado: ${nombre} (${cedula}). Podrá volver a rendirlo.`);
+                alert('✅ Examen supletorio eliminado. El estudiante podrá volver a rendirlo.');
+            } catch(e) {
+                console.error('Error al eliminar el supletorio:', e);
+                alert('Error al eliminar. Revisa la conexión e intenta de nuevo.');
+            }
+        }
+        function cerrarGestionSupletorioNPT() {
+            document.getElementById('npt-supletorio-modal').classList.add('hidden');
+        }
+        async function guardarGestionSupletorioNPT() {
+            if (!cursoActual || !paraleloActual) return;
+            const cv = sanitizarClave(cursoActual), pv = sanitizarClave(paraleloActual);
+            const errEl = document.getElementById('npt-supletorio-json-error');
+            errEl.classList.add('hidden');
+
+            const rawJson = document.getElementById('npt-supletorio-json').value.trim();
+            let banco = [];
+            if (rawJson) {
+                try {
+                    banco = JSON.parse(rawJson);
+                    if (!Array.isArray(banco) || banco.length === 0) throw new Error('Debe ser una lista con al menos una pregunta.');
+                    banco.forEach((q, i) => {
+                        if (!q.pregunta || !Array.isArray(q.opciones) || q.opciones.length < 2 || !q.correcta) {
+                            throw new Error(`Pregunta #${i+1} incompleta (falta "pregunta", "opciones" o "correcta").`);
+                        }
+                        if (!q.opciones.some(o => o.id === q.correcta)) {
+                            throw new Error(`Pregunta #${i+1}: "correcta" (${q.correcta}) no coincide con ningún id de "opciones".`);
+                        }
+                    });
+                } catch(e) {
+                    errEl.textContent = `JSON de preguntas del supletorio inválido: ${e.message}`;
+                    errEl.classList.remove('hidden');
+                    return;
+                }
+            }
+            if (banco.length === 0 && nptSupletorioHabilitadoGeneral(cursoActual, paraleloActual)) {
+                errEl.textContent = 'El supletorio está habilitado para los estudiantes: no puedes guardar sin su banco de preguntas. Regístralo aquí, o primero ciérralo con "🔒 Cerrar todos" en la tarjeta.';
+                errEl.classList.remove('hidden');
+                return;
+            }
+            const cantidadInputVal = parseInt(document.getElementById('npt-supletorio-cantidad').value, 10);
+            const cantidadPreguntas = Number.isFinite(cantidadInputVal) && cantidadInputVal > 0 ? cantidadInputVal : null;
+            const fechaMaximaInput = document.getElementById('npt-supletorio-fecha-maxima').value || null;
+
+            const btn = document.getElementById('npt-btn-guardar-supletorio');
+            btn.disabled = true; btn.textContent = 'Guardando...';
+            try {
+                if (!nptSupletorioPreguntas[cv]) nptSupletorioPreguntas[cv] = {};
+                nptSupletorioPreguntas[cv][pv] = banco;
+                await guardarValorFirebase(`nptSupletorioPreguntas/${cv}/${pv}`, banco);
+
+                if (!nptSupletorioConfig[cv]) nptSupletorioConfig[cv] = {};
+                if (!nptSupletorioConfig[cv][pv]) nptSupletorioConfig[cv][pv] = {};
+                nptSupletorioConfig[cv][pv].cantidadPreguntas = cantidadPreguntas;
+                nptSupletorioConfig[cv][pv].fechaMaxima = fechaMaximaInput;
+                await guardarValorFirebase(`nptSupletorioConfig/${cv}/${pv}/cantidadPreguntas`, cantidadPreguntas);
+                await guardarValorFirebase(`nptSupletorioConfig/${cv}/${pv}/fechaMaxima`, fechaMaximaInput);
+
+                const checks = document.querySelectorAll('#npt-supletorio-estudiantes-body .npt-check-supletorio-estudiante');
+                if (!nptSupletorioHabilitacionEstudiantes[cv]) nptSupletorioHabilitacionEstudiantes[cv] = {};
+                if (!nptSupletorioHabilitacionEstudiantes[cv][pv]) nptSupletorioHabilitacionEstudiantes[cv][pv] = {};
+                const actualizacion = {};
+                checks.forEach(chk => {
+                    const ced = chk.getAttribute('data-cedula');
+                    actualizacion[ced] = chk.checked;
+                    nptSupletorioHabilitacionEstudiantes[cv][pv][ced] = chk.checked;
+                });
+                await guardarValorFirebase(`nptSupletorioHabilitacionEstudiantes/${cv}/${pv}`, actualizacion);
+
+                cerrarGestionSupletorioNPT();
+                renderControlSupletorio();
+                renderTrimestresEstudiante();
+                alert('Configuración del examen supletorio guardada: banco de preguntas, fecha máxima y habilitación individual.');
+            } catch(e) {
+                console.error(e);
+                alert('Error al guardar. Revisa la conexión e intenta de nuevo.');
+            } finally {
+                btn.disabled = false; btn.textContent = '💾 Guardar cambios';
+            }
         }
 
         async function guardarGestionTrimestreNPT() {
@@ -6875,6 +7299,18 @@ video {
                 fila.insertBefore(th, referencia);
             });
         }
+        // Insignia de estado anual (aprueba/pierde/supletorio/pendiente) para el Cuadro General —
+        // clases de Tailwind completas y estáticas (ver nota técnica en renderResultadoAnualEstudiante).
+        function nptEstadoAnualBadgeHtml(estado) {
+            const estilos = {
+                aprueba:    { clase: 'bg-emerald-100 text-emerald-700', texto: '✅ Aprueba' },
+                pierde:     { clase: 'bg-rose-100 text-rose-700', texto: '⛔ Pierde' },
+                supletorio: { clase: 'bg-amber-100 text-amber-700', texto: '📘 Supletorio' },
+                pendiente:  { clase: 'bg-slate-100 text-slate-500', texto: '⏳ Pendiente' }
+            };
+            const e = estilos[estado];
+            return e ? `<span class="px-2 py-0.5 rounded-full font-bold text-[11px] ${e.clase}">${e.texto}</span>` : '<span class="text-slate-300">—</span>';
+        }
         function renderCuadroGeneral() {
             const tbody = document.getElementById('cuadro-general-body');
             const noData = document.getElementById('cuadro-general-no-datos');
@@ -6893,6 +7329,7 @@ video {
                 const notaFinal = calcularPromedioNPT(est.cedula, t);
                 const nExamen   = notaNPTDe(est.cedula, t, 'examen');
                 const nExamenRec   = notaNPTDe(est.cedula, t, 'examenRecuperacion');
+                const infoAnual = nptEstadoAnualNPT(est.cedula);
 
                 // La nota EFECTIVA (la que entra a la fórmula) es la que se muestra en grande;
                 // cuando hay recuperación, el detalle original/recuperación queda en el tooltip
@@ -6924,7 +7361,9 @@ video {
                     ${celdasInsumo}
                     <td class="p-2 text-center bg-indigo-50/50">${celda(promInsumos, null)}</td>
                     <td class="p-2 text-center">${celda(nExamen, nExamenRec)}${nExamen !== null ? `<br><button onclick="imprimirReporteExamenDocente('${escapeHtml(est.cedula)}',${t})" class="mt-1 text-[10px] bg-slate-800 text-white px-2 py-0.5 rounded-lg font-bold hover:bg-slate-900" title="Ver e imprimir el examen completo con aciertos y errores">🖨️ Ver examen</button>` : ''}</td>
-                    <td class="p-2 text-center bg-emerald-50/50">${notaFinal !== null ? `<span class="px-2 py-0.5 rounded-full font-bold ${notaFinal >= 7 ? 'nota-badge-AAR' : 'nota-badge-NAR'}">${formatearNota(notaFinal)}</span>` : '<span class="text-slate-300">—</span>'}</td>`;
+                    <td class="p-2 text-center bg-emerald-50/50">${notaFinal !== null ? `<span class="px-2 py-0.5 rounded-full font-bold ${notaFinal >= 7 ? 'nota-badge-AAR' : 'nota-badge-NAR'}">${formatearNota(notaFinal)}</span>` : '<span class="text-slate-300">—</span>'}</td>
+                    <td class="p-2 text-center bg-amber-50/50">${infoAnual.promedioAnual !== null ? formatearNota(infoAnual.promedioAnual) : '<span class="text-slate-300">—</span>'}</td>
+                    <td class="p-2 text-center bg-amber-50/50">${nptEstadoAnualBadgeHtml(infoAnual.estado)}</td>`;
                 tbody.appendChild(tr);
             });
         }
@@ -6939,7 +7378,8 @@ video {
             // puede tener insumos distintos — usa el Cuadro General en pantalla para ver el nombre
             // real de cada insumo del curso que tengas seleccionado.
             const encabezadosInsumo = NPT_INSUMO_SLOTS.map((slotId, i) => `Insumo ${i+1}`);
-            let csv = 'Estudiante,Cédula,Curso,Paralelo,' + encabezadosInsumo.join(',') + ',Promedio Insumos,Examen,Nota Final,'
+            const ESTADO_ANUAL_CSV = { aprueba: 'Aprueba', pierde: 'Pierde', supletorio: 'Supletorio', pendiente: 'Pendiente (plazo vencido)' };
+            let csv = 'Estudiante,Cédula,Curso,Paralelo,' + encabezadosInsumo.join(',') + ',Promedio Insumos,Examen,Nota Final,Promedio Anual,Estado Final,'
                 + encabezadosInsumo.map(h => `${h} (Original)`).join(',') + ',Examen (Original),'
                 + encabezadosInsumo.map(h => `${h} (Rec.)`).join(',') + ',Examen (Rec.)\n';
             alumnos.forEach(est => {
@@ -6951,11 +7391,13 @@ video {
                 const notaFinal = calcularPromedioNPT(est.cedula, t);
                 const nExamenOrig = notaNPTDe(est.cedula, t, 'examen');
                 const nExamenRec = notaNPTDe(est.cedula, t, 'examenRecuperacion');
+                const infoAnual = nptEstadoAnualNPT(est.cedula);
                 const fmt = v => v !== null ? formatearNota(v) : '';
                 csv += [
                     csvCampo(est.nombre), csvCampo(est.cedula), csvCampo(est.curso), csvCampo(est.paralelo),
                     ...notasEfectivas.map(v => csvCampo(fmt(v))),
                     csvCampo(fmt(promInsumos)), csvCampo(fmt(nExamen)), csvCampo(fmt(notaFinal)),
+                    csvCampo(fmt(infoAnual.promedioAnual)), csvCampo(ESTADO_ANUAL_CSV[infoAnual.estado] || ''),
                     ...notasOriginales.map(v => csvCampo(fmt(v))), csvCampo(fmt(nExamenOrig)),
                     ...notasRec.map(v => csvCampo(fmt(v))), csvCampo(fmt(nExamenRec))
                 ].join(',') + '\n';
@@ -7761,7 +8203,12 @@ video {
             Object.entries(nptBloqueosActivos || {}).forEach(([cedula, porTrimestre]) => {
                 Object.entries(porTrimestre || {}).forEach(([claveTrimestre, reg]) => {
                     if (reg && reg.bloqueado) {
-                        filas.push({ cedula, numTrimestre: parseInt(claveTrimestre.replace('trimestre', '')), reg });
+                        // La clave puede ser numérica ('trimestre1'/'2'/'3') o 'trimestresupletorio' para
+                        // el examen supletorio — se conserva como texto en vez de forzar parseInt, que
+                        // devolvería NaN para el supletorio y rompería la autorización del docente.
+                        const sufijo = claveTrimestre.replace('trimestre', '');
+                        const etiqueta = sufijo === 'supletorio' ? 'Supletorio' : `T${sufijo}`;
+                        filas.push({ cedula, trimestreClave: sufijo, etiqueta, reg });
                     }
                 });
             });
@@ -7772,17 +8219,17 @@ video {
                 <div class="space-y-2">
                 ${filas.map(f => `<div class="flex items-center justify-between bg-white rounded-xl p-3 border border-rose-200 flex-wrap gap-2">
                     <div>
-                        <p class="font-bold text-sm">${escapeHtml(f.reg.nombre || f.cedula)} <span class="text-slate-400 font-normal">· T${f.numTrimestre}</span></p>
+                        <p class="font-bold text-sm">${escapeHtml(f.reg.nombre || f.cedula)} <span class="text-slate-400 font-normal">· ${escapeHtml(f.etiqueta)}</span></p>
                         <p class="text-xs text-slate-500">${escapeHtml(f.reg.motivo || '')}</p>
                     </div>
-                    <button onclick="autorizarContinuarExamen('${escapeHtml(f.cedula)}',${f.numTrimestre})" class="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-emerald-700">✅ Autorizar continuar</button>
+                    <button onclick="autorizarContinuarExamen('${escapeHtml(f.cedula)}','${escapeHtml(f.trimestreClave)}')" class="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-emerald-700">✅ Autorizar continuar</button>
                 </div>`).join('')}
                 </div>
             </div>`;
         }
-        async function autorizarContinuarExamen(cedula, numTrimestre) {
+        async function autorizarContinuarExamen(cedula, trimestreClave) {
             try {
-                await guardarValorFirebase(`nptExamenBloqueos/${cedula}/trimestre${numTrimestre}/bloqueado`, false);
+                await guardarValorFirebase(`nptExamenBloqueos/${cedula}/trimestre${trimestreClave}/bloqueado`, false);
             } catch (e) {
                 console.error('Error autorizando continuar examen:', e);
                 alert('No se pudo enviar la autorización. Revisa tu conexión e intenta de nuevo.');
@@ -8314,6 +8761,69 @@ video {
                     </div>
                 </div>`;
             }).join('');
+            renderResultadoAnualEstudiante();
+        }
+
+        // ==================== Resultado Anual y Examen Supletorio (vista del estudiante) ====================
+        // Solo se muestra cuando los 3 trimestres ya tienen nota final (calcularPromedioAnualNPT no
+        // es null). Muestra el promedio anual y, según el caso, el botón para rendir el supletorio,
+        // el resultado ya obtenido, o el estado final (aprueba/pierde/pendiente).
+        // NOTA TÉCNICA: las clases de Tailwind se escriben siempre COMPLETAS y estáticas (nunca
+        // "bg-${color}-50") porque el CSS de este proyecto está precompilado; una clase construida
+        // por interpolación no existiría en la hoja de estilos y el bloque se vería sin colorear.
+        function renderResultadoAnualEstudiante() {
+            const cont = document.getElementById('npt-resultado-anual-container');
+            if (!cont || !estudianteActual) return;
+            const { cedula, curso, paralelo } = estudianteActual;
+            const info = nptEstadoAnualNPT(cedula);
+            if (info.estado === 'incompleto') { cont.innerHTML = ''; return; }
+
+            const estilosPorEstado = {
+                aprueba:    { icono: '🎉', titulo: 'Apruebas la materia',
+                              bg: 'bg-emerald-50', border: 'border-emerald-200', textTitulo: 'text-emerald-800',
+                              textNota: 'text-emerald-700', borderSuave: 'border-emerald-200', textSuave: 'text-emerald-600' },
+                pierde:     { icono: '⛔', titulo: 'Pierdes la materia',
+                              bg: 'bg-rose-50', border: 'border-rose-200', textTitulo: 'text-rose-800',
+                              textNota: 'text-rose-700', borderSuave: 'border-rose-200', textSuave: 'text-rose-600' },
+                supletorio: { icono: '📘', titulo: 'Tienes derecho a examen supletorio',
+                              bg: 'bg-amber-50', border: 'border-amber-200', textTitulo: 'text-amber-800',
+                              textNota: 'text-amber-700', borderSuave: 'border-amber-200', textSuave: 'text-amber-600' },
+                pendiente:  { icono: '⏳', titulo: 'Plazo del supletorio vencido',
+                              bg: 'bg-slate-50', border: 'border-slate-200', textTitulo: 'text-slate-800',
+                              textNota: 'text-slate-700', borderSuave: 'border-slate-200', textSuave: 'text-slate-600' }
+            };
+            const est = estilosPorEstado[info.estado];
+
+            let cuerpoHtml = '';
+            if (info.estado === 'supletorio') {
+                const puedeRendir = nptPuedeRendirSupletorio(cedula);
+                const fechaMax = nptSupletorioFechaMaxima(curso, paralelo);
+                if (puedeRendir) {
+                    cuerpoHtml = `<button onclick="comenzarExamenSupletorio()" class="w-full bg-amber-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-amber-700">📘 Rendir examen supletorio</button>
+                        <p class="text-[11px] text-amber-700 mt-2 text-center">Necesitas una nota de ${NPT_SUPLETORIO_NOTA_MINIMA_APRUEBA}/10 o más para aprobar la materia. La nota reemplaza tu resultado del año.</p>
+                        ${fechaMax ? `<p class="text-[10px] text-amber-600 mt-1 text-center">⏳ Cierra el ${escapeHtml(formatearFechaMaxima(fechaMax))}</p>` : ''}`;
+                } else {
+                    cuerpoHtml = `<div class="bg-white/60 border border-amber-200 rounded-xl p-3 text-center text-xs text-amber-700">El docente aún no ha habilitado tu examen supletorio. Consulta con él para más información.</div>`;
+                }
+            } else if (info.viaSupletorio) {
+                cuerpoHtml = `<div class="bg-white/60 border ${est.borderSuave} rounded-xl p-3 text-center">
+                    <p class="text-xs font-bold text-slate-600 mb-1">Nota del examen supletorio</p>
+                    <span class="text-2xl font-black ${est.textSuave}">${formatearNota(info.notaSupletorio)} <span class="text-sm text-slate-400 font-normal">/ 10</span></span>
+                </div>`;
+            } else if (info.estado === 'pendiente') {
+                cuerpoHtml = `<div class="bg-white/60 border border-slate-200 rounded-xl p-3 text-center text-xs text-slate-600">No rendiste el examen supletorio dentro del plazo. Consulta con el docente sobre tu situación.</div>`;
+            }
+
+            cont.innerHTML = `<div class="${est.bg} border-2 ${est.border} rounded-2xl p-5">
+                <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                    <div>
+                        <h4 class="font-black text-base ${est.textTitulo}">${est.icono} ${est.titulo}</h4>
+                        <p class="text-xs text-slate-500">Promedio de los 3 trimestres</p>
+                    </div>
+                    <span class="text-2xl font-black ${est.textNota}">${formatearNota(info.promedioAnual)} <span class="text-sm text-slate-400 font-normal">/ 10</span></span>
+                </div>
+                ${cuerpoHtml}
+            </div>`;
         }
 
         // ---- Subida de insumos por URL (los 4 tipos): valida en el acto contra el Worker antes
@@ -9166,6 +9676,60 @@ video {
             return (promIns * pesoInsumos + examen * pesoExamen) / 100;
         }
 
+        // ==================== Resultado anual y Examen Supletorio ====================
+        // Promedio simple de los 3 trimestres (T1+T2+T3)/3. Devuelve null si el año está incompleto
+        // (falta la nota final de algún trimestre) — el resultado anual y el supletorio solo se
+        // pueden determinar con los 3 trimestres cerrados.
+        function calcularPromedioAnualNPT(cedula) {
+            const t1 = calcularPromedioNPT(cedula, 1);
+            const t2 = calcularPromedioNPT(cedula, 2);
+            const t3 = calcularPromedioNPT(cedula, 3);
+            if (t1 === null || t2 === null || t3 === null) return null;
+            return (t1 + t2 + t3) / 3;
+        }
+
+        // Clasifica al estudiante según su promedio anual, redondeado a 2 decimales (mismo criterio
+        // que formatearNota, para evitar falsos positivos por coma flotante):
+        //   ≤ 4.00           → pierde la materia directamente
+        //   4.01 a 6.99      → tiene derecho a examen supletorio (o ya lo rindió / plazo vencido)
+        //   ≥ 7.00           → aprueba la materia directamente
+        // Retorna { promedioAnual, estado, viaSupletorio?, notaSupletorio? }
+        //   estado: 'incompleto' | 'pierde' | 'supletorio' | 'pendiente' | 'aprueba'
+        // 'pendiente' = tenía derecho a supletorio, no lo rindió y el plazo ya venció (el docente
+        // decide manualmente qué hacer — no se autoasigna la pérdida de la materia).
+        function nptEstadoAnualNPT(cedula) {
+            const promedioAnual = calcularPromedioAnualNPT(cedula);
+            if (promedioAnual === null) return { promedioAnual: null, estado: 'incompleto' };
+            const redondeado = Number(formatearNota(promedioAnual));
+            if (redondeado >= NPT_SUPLETORIO_NOTA_MINIMA_APRUEBA) return { promedioAnual: redondeado, estado: 'aprueba' };
+            if (redondeado <= 4.00) return { promedioAnual: redondeado, estado: 'pierde' };
+            // 4.01 – 6.99: derecho a supletorio. ¿Ya lo rindió?
+            const registroSupletorio = nptNotas?.[cedula]?.supletorio;
+            if (registroSupletorio && registroSupletorio.nota !== undefined && registroSupletorio.nota !== null) {
+                const notaSup = numero(registroSupletorio.nota);
+                const estadoFinal = notaSup >= NPT_SUPLETORIO_NOTA_MINIMA_APRUEBA ? 'aprueba' : 'pierde';
+                return { promedioAnual: redondeado, estado: estadoFinal, viaSupletorio: true, notaSupletorio: notaSup };
+            }
+            // No lo ha rendido todavía: ¿el plazo configurado por el docente ya venció?
+            const est = estudiantes.find(e => e.cedula === cedula);
+            const fechaMax = est ? nptSupletorioFechaMaxima(est.curso, est.paralelo) : null;
+            if (fechaMax && fechaMaximaVencida(fechaMax)) return { promedioAnual: redondeado, estado: 'pendiente' };
+            return { promedioAnual: redondeado, estado: 'supletorio' };
+        }
+        // ¿Puede el estudiante iniciar el examen supletorio ahora mismo? (elegible por promedio +
+        // interruptor general + habilitación individual + fecha no vencida + no rendido aún)
+        function nptPuedeRendirSupletorio(cedula) {
+            const est = estudiantes.find(e => e.cedula === cedula);
+            if (!est) return false;
+            const info = nptEstadoAnualNPT(cedula);
+            if (info.estado !== 'supletorio') return false; // ya aprobó, ya perdió, ya lo rindió, o plazo vencido
+            if (!nptSupletorioHabilitadoGeneral(est.curso, est.paralelo)) return false;
+            if (!nptSupletorioEstudianteHabilitado(est.curso, est.paralelo, cedula)) return false;
+            if (fechaMaximaVencida(nptSupletorioFechaMaxima(est.curso, est.paralelo))) return false;
+            if (nptSupletorioPreguntasDe(est.curso, est.paralelo).length === 0) return false;
+            return true;
+        }
+
         // ---- Render del tab de configuración ----
         function renderTabConfiguracion() {
             // (A) Período activo
@@ -9991,6 +10555,12 @@ video {
         window.nptActualizarEstadoExamenTab = nptActualizarEstadoExamenTab;
         window.cerrarGestionTrimestreNPT = cerrarGestionTrimestreNPT;
         window.guardarGestionTrimestreNPT = guardarGestionTrimestreNPT;
+        window.comenzarExamenSupletorio = comenzarExamenSupletorio;
+        window.toggleSupletorioGeneral = toggleSupletorioGeneral;
+        window.abrirGestionSupletorioNPT = abrirGestionSupletorioNPT;
+        window.cerrarGestionSupletorioNPT = cerrarGestionSupletorioNPT;
+        window.guardarGestionSupletorioNPT = guardarGestionSupletorioNPT;
+        window.eliminarSupletorioNPT = eliminarSupletorioNPT;
         window.evaluarConIA = evaluarConIA;
         window.evaluarTodosPendientesIA = evaluarTodosPendientesIA;
         window.reevaluarTodosPendientesVerificarIA = reevaluarTodosPendientesVerificarIA;
