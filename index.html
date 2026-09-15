@@ -15,7 +15,7 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NPT - Notas del Trimestre - Unidad Educativa Sagrado Corazón</title>
+    <title>SGC Sistema de Gestión de Calificaciones - Unidad Educativa Sagrado Corazón</title>
     <style id="tw-compiled">*, ::before, ::after {
   --tw-border-spacing-x: 0;
   --tw-border-spacing-y: 0;
@@ -2058,7 +2058,7 @@ video {
         <!-- Login -->
         <div id="screen-login" class="w-full max-w-2xl mx-auto bg-white rounded-2xl shadow-xl p-6 md:p-8 transition-all">
             <div class="text-center mb-6">
-                <span class="text-xs font-bold text-brand-600 bg-brand-50 px-3 py-1 rounded-full">NPT · Notas del Trimestre</span>
+                <span class="text-xs font-bold text-brand-600 bg-brand-50 px-3 py-1 rounded-full">SGC · Sistema de Gestión de Calificaciones</span>
                 <h3 class="text-2xl font-black mt-2">Ingreso del Estudiante</h3>
                 <p class="text-slate-500 text-sm">Ingresa tu correo institucional y tu cédula como clave de acceso.</p>
             </div>
@@ -2067,14 +2067,14 @@ video {
                     <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Correo institucional</label>
                     <div class="flex items-stretch">
                         <input type="text" id="input-email-local"
-                            oninput="this.value = this.value.replace(/@/g, '')"
+                            oninput="this.value = this.value.replace(/@/g, ''); actualizarVistaPreviaCorreoNPT();"
                             onkeypress="if(event.key==='@') event.preventDefault()"
-                            onpaste="setTimeout(() => { this.value = this.value.replace(/@/g, ''); }, 0)"
-                            placeholder="nombre.apellido"
+                            onpaste="setTimeout(() => { this.value = this.value.replace(/@/g, ''); actualizarVistaPreviaCorreoNPT(); }, 0)"
+                            placeholder="usuario"
                             class="flex-1 px-4 py-3 bg-slate-50 border rounded-l-xl text-sm focus:ring-2 focus:ring-brand-500 min-w-0">
                         <span class="px-3 py-3 bg-brand-600 border border-brand-600 rounded-r-xl text-xs text-white font-bold font-mono whitespace-nowrap flex items-center">@sagradocorazon.edu.ec</span>
                     </div>
-                    <p class="text-[11px] text-slate-400 mt-1">Solo escribe la parte antes del @, el dominio ya está incluido.</p>
+                    <p id="email-vista-previa" class="text-[11px] text-slate-400 mt-1">Solo escribe la parte antes del @, el dominio ya está incluido.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Cédula (clave de acceso)</label>
@@ -2464,16 +2464,16 @@ video {
             <div class="bg-white rounded-2xl shadow-xl p-5 mb-4">
                 <div class="flex items-center justify-between flex-wrap gap-3 mb-1">
                     <div>
-                        <span class="text-xs font-bold text-brand-600 bg-brand-50 px-3 py-1 rounded-full">NPT · Notas del Trimestre</span>
+                        <span class="text-xs font-bold text-brand-600 bg-brand-50 px-3 py-1 rounded-full">SGC · Sistema de Gestión de Calificaciones</span>
                         <h3 class="text-xl font-black mt-1">Entrega de Insumos y Examen</h3>
                         <p id="npt-student-name" class="text-sm text-slate-500"></p>
                     </div>
                     <div class="flex items-center gap-3">
-                        <span class="inline-flex items-center gap-1 text-[11px] text-slate-500" title="Tus ingresos al sistema"><span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">👁️ <span id="cnt-accesos-estudiante-individual">0</span></span> tus accesos</span>
                         <button onclick="volverAlInicio()" class="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl hover:bg-rose-100 hover:border-rose-300 transition-colors">🚪 Cerrar sesión</button>
                     </div>
                 </div>
                 <p id="npt-accesos-diarios-msg" class="mt-2 text-xs font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"></p>
+                <p class="mt-1 text-[11px] text-slate-400" title="Dato informativo: no limita ni afecta tu acceso al sistema">📊 Ingresos históricos a este sistema: <span id="cnt-accesos-estudiante-individual" class="font-bold text-slate-500">0</span> · solo informativo</p>
             </div>
 
             <!-- Tarjetas de trimestres -->
@@ -4001,6 +4001,22 @@ video {
 
         // ==================== EVALUACIÓN ====================
         const DOMINIO_INSTITUCIONAL = '@sagradocorazon.edu.ec';
+        // Vista previa en vivo del correo institucional completo mientras el estudiante escribe:
+        // resalta lo que realmente se está formando (usuario + dominio), en vez de dejar solo el
+        // texto de ayuda gris estático que pasaba desapercibido.
+        function actualizarVistaPreviaCorreoNPT() {
+            const el = document.getElementById('email-vista-previa');
+            const input = document.getElementById('input-email-local');
+            if (!el || !input) return;
+            const local = input.value.trim();
+            if (local) {
+                el.textContent = `Tu correo será: ${local}${DOMINIO_INSTITUCIONAL}`;
+                el.className = 'text-xs font-bold text-brand-700 mt-1';
+            } else {
+                el.textContent = 'Solo escribe la parte antes del @, el dominio ya está incluido.';
+                el.className = 'text-[11px] text-slate-400 mt-1';
+            }
+        }
         async function verificarEstudiante() {
             document.getElementById('login-error')?.classList.add('hidden');
             const datosOk = await esperarDatosIniciales();
@@ -9721,7 +9737,12 @@ video {
                 const sel = document.getElementById(id);
                 if (!sel) return;
                 const val = sel.value;
-                sel.innerHTML = (id === 'npt-filtro-trimestre' ? '<option value="">Todos los trimestres</option>' : '') + opciones;
+                // "npt-filtro-trimestre" también permite filtrar por el examen Supletorio (anual, fuera
+                // de los 3 trimestres), así que se agrega al final; "cuadro-filtro-trimestre" no lo
+                // necesita porque el Cuadro General ya muestra el promedio anual como columna fija.
+                sel.innerHTML = (id === 'npt-filtro-trimestre' ? '<option value="">Todos los trimestres</option>' : '')
+                    + opciones
+                    + (id === 'npt-filtro-trimestre' ? '<option value="supletorio">🎓 Supletorio</option>' : '');
                 // conservar selección si sigue existiendo
                 if ([...sel.options].some(o => o.value === val)) sel.value = val;
             });
@@ -10626,6 +10647,7 @@ video {
 
         // Exponer funciones globales ANTES de iniciar (evita ReferenceError en onclick)
         window.verificarEstudiante = verificarEstudiante;
+        window.actualizarVistaPreviaCorreoNPT = actualizarVistaPreviaCorreoNPT;
         window.comenzarExamenTrimestre = comenzarExamenTrimestre;
         window.comenzarExamenRecuperacionTrimestre = comenzarExamenRecuperacionTrimestre;
         window.comenzarInsumoTestNPT = comenzarInsumoTestNPT;
