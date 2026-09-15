@@ -2182,6 +2182,7 @@ video {
                                     <option value="1">1er Trimestre</option>
                                     <option value="2">2do Trimestre</option>
                                     <option value="3">3er Trimestre</option>
+                                    <option value="supletorio">🎓 Supletorio</option>
                                 </select>
                                 <select id="npt-filtro-tipo-envio" onchange="renderNPTDocente()" class="text-xs border rounded-lg px-2 py-1">
                                     <option value="">Todos</option>
@@ -4894,6 +4895,45 @@ video {
             abrirODescargarReporte(`Reporte de ${etiquetaCampo} — ${est?.nombre || reg.nombre || cedula}`, contenido, `reporte_${nombreArchivoCampo}_${cedula}_t${numTrimestre}_${fechaArchivo()}.html`);
         }
 
+        // Reporte del examen SUPLETORIO — función separada de imprimirReporteExamenDocente porque
+        // el registro no vive bajo ningún trimestre (nptNotas/{cedula}/supletorio) y su resultado
+        // incluye el estado final de la materia, no solo la nota.
+        function imprimirReporteSupletorioDocente(cedula) {
+            const est = estudiantes.find(e => e.cedula === cedula);
+            const reg = nptNotas[cedula]?.supletorio;
+            if (!reg) { alert('No se encontró el examen supletorio rendido por este estudiante.'); return; }
+            const horaIni = reg.horaInicio ? nptFormatoFechaHora(reg.horaInicio) : nptFormatoFecha(reg.fecha);
+            const horaFin = reg.horaFin ? nptFormatoFechaHora(reg.horaFin) : '-';
+            const puntosPorAcierto = reg.total > 0 ? Math.round((10 / reg.total) * 100) / 100 : 0;
+            const filas = reg.detalle.map((d,i) => `<tr>
+                <td class="col-num center">${i+1}</td>
+                <td>${escapeHtml(d.pregunta)}</td>
+                <td class="center">${escapeHtml(d.respuestaDada||'-')}</td>
+                <td class="center">${escapeHtml(d.correcta)}</td>
+                <td class="center">${d.ok ? '✅' : '❌'}</td></tr>`).join('');
+            const aprobo = reg.estadoFinal === 'aprueba';
+            const contenido = `
+                <div class="filtro">
+                    <strong>Docente:</strong> ${escapeHtml(NPT_NOMBRE_DOCENTE)}<br>
+                    <strong>Estudiante:</strong> ${escapeHtml(est?.nombre || reg.nombre || '')} &nbsp; <strong>Cédula:</strong> ${escapeHtml(cedula)}<br>
+                    <strong>Curso/Paralelo:</strong> ${escapeHtml(est?.curso||'')} "${escapeHtml(est?.paralelo||'')}"<br>
+                    <strong>Período:</strong> Examen Supletorio (Anual)<br>
+                    <strong>Promedio anual previo:</strong> ${(reg.promedioAnualPrevio !== null && reg.promedioAnualPrevio !== undefined) ? formatearNota(reg.promedioAnualPrevio) : '-'} &nbsp; <strong>Resultado:</strong> ${aprobo ? '✅ Aprueba la materia' : '⛔ Pierde la materia'}<br>
+                    <strong>Inicio:</strong> ${escapeHtml(horaIni)} &nbsp; <strong>Fin:</strong> ${escapeHtml(horaFin)}
+                </div>
+                ${reg.motivoSalida ? `<div class="filtro" style="background:#fef2f2;border-color:#fecaca;color:#991b1b"><strong>⚠️ Finalizado/a automáticamente:</strong> ${escapeHtml(reg.motivoSalida)}</div>` : ''}
+                <table>
+                    <tr><th style="width:180px">Nota obtenida</th><td><strong style="font-size:16px">${formatearNota(reg.nota)} / 10</strong></td></tr>
+                    <tr><th>Aciertos</th><td>${reg.correctas} de ${reg.total} (${puntosPorAcierto} pts por acierto)</td></tr>
+                </table>
+                <h2>Detalle de respuestas</h2>
+                <table>
+                    <tr><th class="col-num">#</th><th>Pregunta</th><th class="col-abrev">Respuesta del estudiante</th><th class="col-abrev">Correcta</th><th class="col-abrev">Resultado</th></tr>
+                    ${filas}
+                </table>`;
+            abrirODescargarReporte(`Reporte de Examen Supletorio — ${est?.nombre || reg.nombre || cedula}`, contenido, `reporte_supletorio_${cedula}_${fechaArchivo()}.html`);
+        }
+
         // ==================== NAVEGACIÓN ====================
         function mostrarPantalla(id) {
             document.querySelectorAll('[id^="screen-"]').forEach(el => el.classList.add('hidden'));
@@ -6972,6 +7012,13 @@ video {
 
             const filas = [];
             alumnos.forEach(est => {
+                // Examen SUPLETORIO: es anual, no pertenece a ningún trimestre — se agrega aparte y
+                // solo se muestra cuando el filtro está en "Todos los trimestres" o en "Supletorio".
+                if (!filtroT || filtroT === 'supletorio') {
+                    const supletorio = nptNotas[est.cedula]?.supletorio || null;
+                    if (supletorio) filas.push({ clase: 'supletorio', esRecuperacion: false, estado: 'calificado', fechaOrden: fechaOrdenNPT(supletorio.fecha), est, supletorio });
+                }
+                if (filtroT === 'supletorio') return; // no mezclar con filas de trimestre bajo este filtro
                 trimestresEfectivos().forEach(t => {
                     if (filtroT && String(t.num) !== filtroT) return;
                     // Los insumos activos dependen del curso/paralelo de CADA estudiante (dinámico).
@@ -7047,6 +7094,44 @@ video {
             noData?.classList.add('hidden');
 
             filasFiltradas.forEach((fila, i) => {
+                if (fila.supletorio) {
+                    const { est, supletorio } = fila;
+                    const notaVal = numero(supletorio.nota);
+                    const aprobo = supletorio.estadoFinal === 'aprueba';
+                    const badgeClass = notaVal >= 9 ? 'nota-badge-DAR' :
+                        notaVal >= 7 ? 'nota-badge-AAR' :
+                        notaVal >= 4 ? 'nota-badge-PAR' : 'nota-badge-NAR';
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b hover:bg-slate-50';
+                    tr.innerHTML = `
+                        <td class="p-2 text-center text-slate-400">${i+1}</td>
+                        <td class="p-2 font-medium text-xs">${escapeHtml(est.nombre)}</td>
+                        <td class="p-2 font-mono text-xs">${escapeHtml(est.cedula)}</td>
+                        <td class="p-2 text-center">
+                            <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">🎓 Supletorio</span><br>
+                            <span class="text-[10px] text-slate-500">Examen anual</span>
+                            ${supletorio.motivoSalida ? '<div class="text-[10px] text-rose-600 font-bold mt-0.5" title="'+escapeHtml(supletorio.motivoSalida)+'">⚠️ Salió del examen</div>' : ''}
+                        </td>
+                        <td class="p-2 text-center">
+                            <button onclick="imprimirReporteSupletorioDocente('${escapeHtml(est.cedula)}')"
+                                class="inline-flex items-center gap-1 text-xs bg-brand-50 text-brand-700 font-bold px-2 py-1 rounded-lg hover:bg-brand-100">
+                                🖨️ Ver examen</button>
+                        </td>
+                        <td class="p-2 text-center text-[11px] text-slate-500">${escapeHtml(nptFormatoFechaHora(supletorio.fecha))}</td>
+                        <td class="p-2 text-center">
+                            <span class="text-xs font-bold px-2 py-0.5 rounded-full ${badgeClass}">${formatearNota(notaVal)}</span>
+                            <div class="text-[10px] text-slate-400 mt-0.5">${supletorio.correctas}/${supletorio.total} aciertos</div>
+                            <div class="text-[10px] font-bold mt-0.5 ${aprobo ? 'text-emerald-600' : 'text-rose-600'}">${aprobo ? '✅ Aprueba la materia' : '⛔ Pierde la materia'}</div>
+                        </td>
+                        <td class="p-2 text-center space-y-1">
+                            <button onclick="eliminarSupletorioNPT('${escapeHtml(est.cedula)}','${escapeHtml(est.nombre).replace(/'/g,"\\'")}')"
+                                class="block w-full bg-rose-100 text-rose-700 text-xs px-2 py-1 rounded-lg hover:bg-rose-200"
+                                title="Elimina el supletorio rendido para que el estudiante pueda volver a rendirlo">
+                                🗑️ Eliminar examen</button>
+                        </td>`;
+                    tbody.appendChild(tr);
+                    return;
+                }
                 if (fila.examen) {
                     const { est, t, examen } = fila;
                     const notaVal = numero(examen.nota);
@@ -10549,6 +10634,7 @@ video {
         window.cambiarRespuestaRevision = cambiarRespuestaRevision;
         window.finalizarExamenManual = finalizarExamenManual;
         window.imprimirReporteExamenDocente = imprimirReporteExamenDocente;
+        window.imprimirReporteSupletorioDocente = imprimirReporteSupletorioDocente;
         window.eliminarExamenNPT = eliminarExamenNPT;
         window.autorizarContinuarExamen = autorizarContinuarExamen;
         window.mostrarAccesoDocente = mostrarAccesoDocente;
