@@ -2155,17 +2155,13 @@ video {
 
                 <!-- TAB NPT DOCENTE -->
                 <div id="tab-npt" class="hidden p-5">
-                    <!-- Control de habilitación de trimestres -->
+                    <!-- Control de habilitación (trimestres + supletorio, en pestañas) -->
                     <div class="bg-slate-50 rounded-xl p-4 mb-5">
-                        <h4 class="font-bold mb-3 text-sm">⚙️ Control de Habilitación por Trimestre</h4>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3" id="npt-control-trimestres">
+                        <h4 class="font-bold mb-3 text-sm">⚙️ Control de Habilitación</h4>
+                        <div class="flex flex-wrap gap-2 mb-3" id="npt-control-tabs">
                             <!-- generado por JS -->
                         </div>
-                    </div>
-                    <!-- Control del Examen Supletorio (anual, NO por trimestre) -->
-                    <div class="bg-amber-50 rounded-xl p-4 mb-5 border border-amber-200">
-                        <h4 class="font-bold mb-3 text-sm text-amber-800">🎓 Examen Supletorio (anual)</h4>
-                        <div id="npt-control-supletorio">
+                        <div id="npt-control-detalle">
                             <!-- generado por JS -->
                         </div>
                     </div>
@@ -5757,83 +5753,122 @@ video {
         }
 
         // ---- Habilitación de trimestres (docente) — filtrado por curso/paralelo ----
-        function renderControlTrimestres() {
-            const cont = document.getElementById('npt-control-trimestres');
-            if (!cont) return;
+        // ==================== Control de Habilitación (pestañas: 3 trimestres + Supletorio) ====================
+        // Antes eran 3 tarjetas apiladas + una tarjeta separada del supletorio (mucho espacio vertical).
+        // Ahora: una fila de pestañas (una por trimestre + una para el supletorio) y, debajo, una única
+        // fila de detalle compacta que muestra los controles de lo que esté seleccionado.
+        let nptControlTabActivo = null;
+
+        function nptSeleccionarTabControl(clave) {
+            nptControlTabActivo = clave;
+            renderControlHabilitacionNPT();
+        }
+
+        function renderControlHabilitacionNPT() {
+            const contTabs = document.getElementById('npt-control-tabs');
+            const contDetalle = document.getElementById('npt-control-detalle');
+            if (!contTabs || !contDetalle) return;
             if (!cursoActual || !paraleloActual) {
-                cont.innerHTML = `<div class="md:col-span-3 text-center text-sm text-slate-400 py-6">
+                contTabs.innerHTML = '';
+                contDetalle.innerHTML = `<div class="text-center text-sm text-slate-400 py-6">
                     ⚠️ Selecciona un curso y un paralelo arriba (filtro general) para gestionar la habilitación NPT.</div>`;
                 return;
             }
-            cont.innerHTML = trimestresEfectivos().map(t => {
-                const insumosActivos = nptCantidadInsumosActivos(cursoActual, paraleloActual, t.num);
-                const totalInsumos = NPT_MAX_INSUMOS;
-                const hab = insumosActivos > 0;
-                const habExamen = nptExamenHabilitado(cursoActual, paraleloActual, t.num);
-                const habExamenRecuperacion = nptExamenRecuperacionHabilitado(cursoActual, paraleloActual, t.num);
-                return `<div class="bg-white border-2 ${hab ? 'border-brand-400' : 'border-slate-200'} rounded-xl p-3">
-                    <div class="flex items-center justify-between gap-2 mb-1">
-                        <span class="font-bold text-sm">${t.label}</span>
-                        <span class="text-xs px-2 py-0.5 rounded-full font-bold ${hab ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}">${hab ? '🟢 ' + insumosActivos + '/' + totalInsumos + ' insumos' : '🔴 Cerrado'}</span>
-                    </div>
-                    <p class="text-xs text-slate-400 mb-2">${t.meses} · ${escapeHtml(cursoActual)} "${escapeHtml(paraleloActual)}"</p>
-                    <div class="flex gap-2 mb-2">
-                        <button onclick="toggleHabilitacionTrimestre(${t.num})"
-                            class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${hab ? 'bg-rose-100 text-rose-700 hover:bg-rose-200' : 'bg-brand-600 text-white hover:bg-brand-700'}">
-                            ${hab ? '🔒 Cerrar todos' : '🔓 Habilitar todos'}
-                        </button>
-                        <button onclick="abrirGestionTrimestreNPT(${t.num})"
-                            class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-white hover:bg-slate-900">
-                            ⚙️ Gestionar
-                        </button>
-                    </div>
-                    <button onclick="toggleExamenTrimestre(${t.num})"
-                        class="w-full py-1.5 rounded-lg text-xs font-bold transition-colors ${habExamen ? 'bg-rose-100 text-rose-700 hover:bg-rose-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'}">
-                        ${habExamen ? '🔒 Cerrar examen' : '📝 Habilitar examen'}
-                    </button>
-                    <button onclick="toggleExamenRecuperacionTrimestre(${t.num})"
-                        class="w-full py-1.5 rounded-lg text-xs font-bold transition-colors mt-2 ${habExamenRecuperacion ? 'bg-rose-100 text-rose-700 hover:bg-rose-200' : 'bg-purple-600 text-white hover:bg-purple-700'}">
-                        ${habExamenRecuperacion ? '🔒 Cerrar recuperación' : '🔁 Habilitar recuperación'}
-                    </button>
-                </div>`;
+            const trimestres = trimestresEfectivos();
+            const clavesValidas = trimestres.map(t => 't' + t.num).concat(['sup']);
+            if (!nptControlTabActivo || !clavesValidas.includes(nptControlTabActivo)) {
+                nptControlTabActivo = clavesValidas[0];
+            }
+
+            const tabsTrimestre = trimestres.map(t => {
+                const clave = 't' + t.num;
+                const activo = nptControlTabActivo === clave;
+                const hab = nptCantidadInsumosActivos(cursoActual, paraleloActual, t.num) > 0;
+                return `<button onclick="nptSeleccionarTabControl('${clave}')"
+                    class="flex-1 py-2 px-3 rounded-lg text-xs font-bold whitespace-nowrap ${activo ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200'}">
+                    ${hab ? '🟢' : '🔴'} ${t.label}
+                </button>`;
             }).join('');
-            renderControlSupletorio();
+            const activoSup = nptControlTabActivo === 'sup';
+            const tabSupletorio = `<button onclick="nptSeleccionarTabControl('sup')"
+                class="flex-1 py-2 px-3 rounded-lg text-xs font-bold whitespace-nowrap ${activoSup ? 'bg-amber-600 text-white' : 'bg-white text-amber-700 border border-amber-200'}">
+                🎓 Supletorio
+            </button>`;
+            contTabs.innerHTML = tabsTrimestre + tabSupletorio;
+
+            contDetalle.innerHTML = activoSup
+                ? nptDetalleSupletorioHtml()
+                : nptDetalleTrimestreHtml(trimestres.find(t => 't' + t.num === nptControlTabActivo));
         }
 
-        // ==================== Control del Examen Supletorio (docente) ====================
-        function renderControlSupletorio() {
-            const cont = document.getElementById('npt-control-supletorio');
-            if (!cont) return;
-            if (!cursoActual || !paraleloActual) {
-                cont.innerHTML = `<div class="text-center text-sm text-slate-400 py-4">
-                    ⚠️ Selecciona un curso y un paralelo arriba (filtro general) para gestionar el supletorio.</div>`;
-                return;
-            }
+        function nptDetalleTrimestreHtml(t) {
+            if (!t) return '';
+            const insumosActivos = nptCantidadInsumosActivos(cursoActual, paraleloActual, t.num);
+            const totalInsumos = NPT_MAX_INSUMOS;
+            const hab = insumosActivos > 0;
+            const habExamen = nptExamenHabilitado(cursoActual, paraleloActual, t.num);
+            const habExamenRecuperacion = nptExamenRecuperacionHabilitado(cursoActual, paraleloActual, t.num);
+            return `<div class="flex items-center flex-wrap gap-3 bg-white border-2 ${hab ? 'border-brand-400' : 'border-slate-200'} rounded-xl p-3">
+                <div class="flex-1">
+                    <span class="font-bold text-sm">${t.label}</span>
+                    <p class="text-xs text-slate-400">${t.meses} · ${escapeHtml(cursoActual)} "${escapeHtml(paraleloActual)}"</p>
+                </div>
+                <span class="text-xs px-2 py-0.5 rounded-full font-bold ${hab ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}">${hab ? '🟢 ' + insumosActivos + '/' + totalInsumos + ' insumos' : '🔴 Cerrado'}</span>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="toggleHabilitacionTrimestre(${t.num})" title="${hab ? 'Cerrar todos' : 'Habilitar todos'}"
+                        class="flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold ${hab ? 'bg-rose-100 text-rose-700 hover:bg-rose-200' : 'bg-brand-600 text-white hover:bg-brand-700'}">
+                        <span class="text-base leading-none">${hab ? '🔒' : '🔓'}</span>${hab ? 'Cerrar' : 'Habilitar'}
+                    </button>
+                    <button onclick="abrirGestionTrimestreNPT(${t.num})" title="Gestionar"
+                        class="flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold bg-slate-800 text-white hover:bg-slate-900">
+                        <span class="text-base leading-none">⚙️</span>Gestionar
+                    </button>
+                    <button onclick="toggleExamenTrimestre(${t.num})" title="${habExamen ? 'Cerrar examen' : 'Habilitar examen'}"
+                        class="flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold ${habExamen ? 'bg-rose-100 text-rose-700 hover:bg-rose-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'}">
+                        <span class="text-base leading-none">📝</span>Examen
+                    </button>
+                    <button onclick="toggleExamenRecuperacionTrimestre(${t.num})" title="${habExamenRecuperacion ? 'Cerrar recuperación' : 'Habilitar recuperación'}"
+                        class="flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold ${habExamenRecuperacion ? 'bg-rose-100 text-rose-700 hover:bg-rose-200' : 'bg-purple-600 text-white hover:bg-purple-700'}">
+                        <span class="text-base leading-none">🔁</span>Recup.
+                    </button>
+                </div>
+            </div>`;
+        }
+
+        function nptDetalleSupletorioHtml() {
             const habGeneral = nptSupletorioHabilitadoGeneral(cursoActual, paraleloActual);
             const fechaMax = nptSupletorioFechaMaxima(cursoActual, paraleloActual);
             const banco = nptSupletorioPreguntasDe(cursoActual, paraleloActual);
             const alumnos = estudiantesFiltrados();
             const elegibles = alumnos.filter(e => nptEstadoAnualNPT(e.cedula).estado === 'supletorio').length;
             const pendientes = alumnos.filter(e => nptEstadoAnualNPT(e.cedula).estado === 'pendiente').length;
-            cont.innerHTML = `<div class="bg-white border-2 ${habGeneral ? 'border-amber-400' : 'border-slate-200'} rounded-xl p-3">
-                <div class="flex items-center justify-between gap-2 mb-1 flex-wrap">
-                    <span class="font-bold text-sm">${escapeHtml(cursoActual)} "${escapeHtml(paraleloActual)}"</span>
-                    <span class="text-xs px-2 py-0.5 rounded-full font-bold ${habGeneral ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}">${habGeneral ? '🟢 Habilitado' : '🔴 Cerrado'}</span>
+            return `<div class="flex items-center flex-wrap gap-3 border-2 border-amber-200 rounded-xl p-3 ${habGeneral ? 'bg-amber-100' : 'bg-amber-50'}">
+                <div class="flex-1">
+                    <span class="font-bold text-sm">🎓 Examen Supletorio (anual)</span>
+                    <p class="text-xs text-slate-500">${escapeHtml(cursoActual)} "${escapeHtml(paraleloActual)}" · ${banco.length} pregunta(s) · ${elegibles} con derecho${pendientes ? ` · ${pendientes} plazo vencido` : ''}</p>
+                    <p class="text-xs text-slate-400">${fechaMax ? `Fecha máxima: ${escapeHtml(formatearFechaMaxima(fechaMax))}` : 'Sin fecha límite configurada'}</p>
                 </div>
-                <p class="text-xs text-slate-500 mb-1">${banco.length} pregunta(s) en el banco · ${elegibles} estudiante(s) con derecho a supletorio${pendientes ? ` · ${pendientes} con plazo vencido sin rendir` : ''}</p>
-                <p class="text-xs text-slate-400 mb-2">${fechaMax ? `Fecha máxima: ${escapeHtml(formatearFechaMaxima(fechaMax))}` : 'Sin fecha límite configurada'}</p>
-                <div class="flex gap-2">
-                    <button onclick="toggleSupletorioGeneral()"
-                        class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${habGeneral ? 'bg-rose-100 text-rose-700 hover:bg-rose-200' : 'bg-amber-600 text-white hover:bg-amber-700'}">
-                        ${habGeneral ? '🔒 Cerrar todos' : '🔓 Habilitar todos'}
+                <span class="text-xs px-2 py-0.5 rounded-full font-bold ${habGeneral ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}">${habGeneral ? '🟢 Habilitado' : '🔴 Cerrado'}</span>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="toggleSupletorioGeneral()" title="${habGeneral ? 'Cerrar todos' : 'Habilitar todos'}"
+                        class="flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold ${habGeneral ? 'bg-rose-100 text-rose-700 hover:bg-rose-200' : 'bg-amber-600 text-white hover:bg-amber-700'}">
+                        <span class="text-base leading-none">${habGeneral ? '🔒' : '🔓'}</span>${habGeneral ? 'Cerrar' : 'Habilitar'}
                     </button>
-                    <button onclick="abrirGestionSupletorioNPT()"
-                        class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-white hover:bg-slate-900">
-                        ⚙️ Gestionar
+                    <button onclick="abrirGestionSupletorioNPT()" title="Gestionar"
+                        class="flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold bg-slate-800 text-white hover:bg-slate-900">
+                        <span class="text-base leading-none">⚙️</span>Gestionar
                     </button>
                 </div>
             </div>`;
         }
+
+        // Nombres previos conservados como envoltorios: cada punto del código que ya llamaba a
+        // renderControlTrimestres()/renderControlSupletorio() (12 sitios) sigue funcionando igual,
+        // y ambos ahora refrescan el widget completo de pestañas para que el estado se mantenga
+        // sincronizado sin importar cuál pestaña esté activa.
+        function renderControlTrimestres() { renderControlHabilitacionNPT(); }
+        function renderControlSupletorio() { renderControlHabilitacionNPT(); }
+
         async function toggleSupletorioGeneral() {
             if (!cursoActual || !paraleloActual) { alert('Selecciona curso y paralelo primero.'); return; }
             const cv = sanitizarClave(cursoActual), pv = sanitizarClave(paraleloActual);
@@ -10557,6 +10592,7 @@ video {
         window.guardarGestionTrimestreNPT = guardarGestionTrimestreNPT;
         window.comenzarExamenSupletorio = comenzarExamenSupletorio;
         window.toggleSupletorioGeneral = toggleSupletorioGeneral;
+        window.nptSeleccionarTabControl = nptSeleccionarTabControl;
         window.abrirGestionSupletorioNPT = abrirGestionSupletorioNPT;
         window.cerrarGestionSupletorioNPT = cerrarGestionSupletorioNPT;
         window.guardarGestionSupletorioNPT = guardarGestionSupletorioNPT;
