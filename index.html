@@ -2788,16 +2788,16 @@ video {
                                 <tr id="npt-gestion-estudiantes-thead-row">
                                     <th class="p-2 text-left">Estudiante</th>
                                     <th class="p-2 text-left">Cédula</th>
-                                    <th class="p-2 text-center">Insumos<br><input type="checkbox" id="npt-check-todos-insumos" onchange="nptSeleccionarTodosEstudiantes('insumos', this.checked)" class="w-4 h-4 mt-1 align-middle" title="Seleccionar todos"></th>
+                                    <!-- Las columnas de cada INSUMO ACTIVO se agregan dinámicamente por JS, una por insumo. -->
                                     <th class="p-2 text-center">Examen<br><input type="checkbox" id="npt-check-todos-examen" onchange="nptSeleccionarTodosEstudiantes('examen', this.checked)" class="w-4 h-4 mt-1 align-middle" title="Seleccionar todos"></th>
                                     <th class="p-2 text-center">Recup. examen<br><input type="checkbox" id="npt-check-todos-recuperacion" onchange="nptSeleccionarTodosEstudiantes('recuperacion', this.checked)" class="w-4 h-4 mt-1 align-middle" title="Seleccionar todos"></th>
-                                    <!-- Las columnas "Recup. {insumo}" se agregan aquí dinámicamente por JS, una por cada insumo activo de este curso/paralelo/trimestre (nptRegenerarEncabezadoEstudiantes). -->
+                                    <!-- Las columnas "Recup. {insumo}" se agregan aquí dinámicamente por JS. -->
                                 </tr>
                             </thead>
                             <tbody id="npt-gestion-estudiantes-body"></tbody>
                         </table>
                     </div>
-                    <p class="text-[11px] text-slate-400 mt-2">Filtra por nombre o cédula para encontrar rápido a un estudiante. Usa las casillas del encabezado para seleccionar a todos.</p>
+                    <p class="text-[11px] text-slate-400 mt-2">Filtra por nombre o cédula. Cada insumo activo tiene su propia casilla por estudiante; las casillas del encabezado permiten habilitar ese insumo para todos.</p>
                 </section>
 
             </div>
@@ -5156,7 +5156,10 @@ video {
         const NPT_AUTH_HEADER = '3f79bbd513edaf0d68bf046dd951929ae3f2a86e3aaaf05f';
 
         let nptConfig = {};                 // { [curso]: { [paralelo]: { [n]: {habilitado, examenHabilitado} } } }
-        let nptHabilitacionEstudiantes = {}; // { [curso]: { [paralelo]: { [n]: { [cedula]: bool } } } }
+        let nptHabilitacionEstudiantes = {}; // LEGACY/general: { [curso]: { [paralelo]: { [n]: { [cedula]: bool } } } }
+        // Habilitación INDIVIDUAL por cada insumo activo:
+        // { [curso]: { [paralelo]: { [n]: { [insumo1..8]: { [cedula]: bool } } } } }
+        let nptInsumoHabilitacionEstudiantes = {};
         let nptExamenHabilitacionEstudiantes = {}; // { [curso]: { [paralelo]: { [n]: { [cedula]: bool } } } }
         let nptExamenRecuperacionHabilitacionEstudiantes = {}; // { [curso]: { [paralelo]: { [n]: { [cedula]: bool } } } }
         let nptInsumoRecuperacionHabilitacionEstudiantes = {}; // { [curso]: { [paralelo]: { [n]: { [tipo]: { [cedula]: bool } } } } }
@@ -5265,6 +5268,10 @@ video {
         async function cargarHabilitacionEstudiantesNPT() {
             try { nptHabilitacionEstudiantes = (await leerValorRutaFirebase('nptHabilitacionEstudiantes')) || {}; }
             catch(e) { nptHabilitacionEstudiantes = {}; }
+        }
+        async function cargarInsumoHabilitacionEstudiantesNPT() {
+            try { nptInsumoHabilitacionEstudiantes = (await leerValorRutaFirebase('nptInsumoHabilitacionEstudiantes')) || {}; }
+            catch(e) { nptInsumoHabilitacionEstudiantes = {}; }
         }
         async function cargarExamenHabilitacionEstudiantesNPT() {
             try { nptExamenHabilitacionEstudiantes = (await leerValorRutaFirebase('nptExamenHabilitacionEstudiantes')) || {}; }
@@ -5403,7 +5410,7 @@ video {
 
         async function iniciarModuloNPT() {
             await Promise.all([
-                cargarConfigNPT(), cargarHabilitacionEstudiantesNPT(), cargarExamenHabilitacionEstudiantesNPT(),
+                cargarConfigNPT(), cargarHabilitacionEstudiantesNPT(), cargarInsumoHabilitacionEstudiantesNPT(), cargarExamenHabilitacionEstudiantesNPT(),
                 cargarExamenRecuperacionHabilitacionEstudiantesNPT(), cargarInsumoRecuperacionHabilitacionEstudiantesNPT(),
                 cargarExamenesNPT(), cargarExamenesRecuperacionNPT(), cargarSolicitudesRecuperacionNPT(), cargarInsumoPreguntasNPT(), cargarRubricasNPT(), cargarArchivosNPT(), cargarNotasNPT(), cargarEvaluacionesIANPT(),
                 cargarObservacionesDevolucionNPT(),
@@ -5421,6 +5428,11 @@ video {
                 });
                 database.ref('nptHabilitacionEstudiantes').on('value', snap => {
                     nptHabilitacionEstudiantes = snap.val() || {};
+                    renderControlTrimestres();
+                    renderTrimestresEstudiante();
+                });
+                database.ref('nptInsumoHabilitacionEstudiantes').on('value', snap => {
+                    nptInsumoHabilitacionEstudiantes = snap.val() || {};
                     renderControlTrimestres();
                     renderTrimestresEstudiante();
                 });
@@ -5527,10 +5539,19 @@ video {
         }
         function nptEstudianteHabilitado(curso, paralelo, n, cedula) {
             const mapa = nptNodoTrimestre(nptHabilitacionEstudiantes, curso, paralelo, n);
-            // Si el docente no ha definido el estado individual del estudiante, se asume habilitado
-            // mientras el trimestre esté activo en general (el docente puede desmarcar excepciones).
+            // Compatibilidad con la estructura anterior: si no existe una definición individual,
+            // se asume habilitado mientras el trimestre esté activo.
             if (!mapa || mapa[cedula] === undefined) return nptTrimestreHabilitado(curso, paralelo, n);
             return !!mapa[cedula];
+        }
+        // Habilitación individual del estudiante para UN insumo concreto.
+        // Si todavía no existe el nuevo registro, se conserva el comportamiento anterior como
+        // compatibilidad/migración: se toma la habilitación general del estudiante.
+        function nptInsumoEstudianteHabilitado(curso, paralelo, n, tipo, cedula) {
+            const nodoTrim = nptNodoTrimestre(nptInsumoHabilitacionEstudiantes, curso, paralelo, n);
+            const mapa = nodoTrim?.[tipo];
+            if (mapa && mapa[cedula] !== undefined) return !!mapa[cedula];
+            return nptEstudianteHabilitado(curso, paralelo, n, cedula);
         }
         function nptRubricaTexto(curso, paralelo, n, tipo) {
             return nptNodoTrimestre(nptRubricas, curso, paralelo, n)?.[tipo]?.texto || '';
@@ -5803,7 +5824,7 @@ video {
         // ¿Puede el estudiante subir este insumo ahora? (insumo habilitado + estudiante habilitado + fecha no vencida)
         function nptPuedeSubirInsumo(curso, paralelo, n, tipo, cedula) {
             if (!nptInsumoHabilitado(curso, paralelo, n, tipo)) return false;
-            if (!nptEstudianteHabilitado(curso, paralelo, n, cedula)) return false;
+            if (!nptInsumoEstudianteHabilitado(curso, paralelo, n, tipo, cedula)) return false;
             if (fechaMaximaVencida(nptInsumoFechaMaxima(curso, paralelo, n, tipo))) return false;
             return true;
         }
@@ -6155,10 +6176,19 @@ video {
             });
         }
         function nptSeleccionarTodosEstudiantes(col, estado) {
-            const sel = col === 'examen' ? '.npt-check-examen-estudiante'
-                : col === 'recuperacion' ? '.npt-check-recuperacion-estudiante'
-                : '.npt-check-estudiante';
-            document.querySelectorAll(`#npt-gestion-estudiantes-body ${sel}`).forEach(chk => chk.checked = estado);
+            if (col === 'insumos') {
+                if (!cursoActual || !paraleloActual || !nptGestionCtx) return;
+                nptInsumosActivosNPT(cursoActual, paraleloActual, nptGestionCtx.trimestre).forEach(ins => {
+                    document.querySelectorAll(`#npt-gestion-estudiantes-body .npt-check-insumo-estudiante[data-insumo-hab="${ins.id}"]`).forEach(chk => chk.checked = estado);
+                });
+            } else {
+                const sel = col === 'examen' ? '.npt-check-examen-estudiante' : '.npt-check-recuperacion-estudiante';
+                document.querySelectorAll(`#npt-gestion-estudiantes-body ${sel}`).forEach(chk => chk.checked = estado);
+            }
+            nptSyncMasterEstudiantes();
+        }
+        function nptSeleccionarTodosEstudiantesInsumo(tipoId, estado) {
+            document.querySelectorAll(`#npt-gestion-estudiantes-body .npt-check-insumo-estudiante[data-insumo-hab="${tipoId}"]`).forEach(chk => chk.checked = estado);
             nptSyncMasterEstudiantes();
         }
         function nptSeleccionarTodosEstudiantesRecuperacionInsumo(tipoId, estado) {
@@ -6169,17 +6199,32 @@ video {
             if (!cursoActual || !paraleloActual || !nptGestionCtx) return;
             nptInsumosActivosNPT(cursoActual, paraleloActual, nptGestionCtx.trimestre).forEach(ins => nptSeleccionarTodosEstudiantesRecuperacionInsumo(ins.id, estado));
         }
-        // Reconstruye las columnas "Recup. {insumo}" del encabezado de la pestaña "Estudiantes"
-        // según los insumos ACTIVOS de este curso/paralelo/trimestre (dinámico, hasta 8).
+        // Reconstruye las columnas de habilitación REGULAR y de RECUPERACIÓN según los insumos
+        // ACTIVOS del curso/paralelo/trimestre. Cada insumo tiene su propia casilla por estudiante.
         function nptRegenerarEncabezadoEstudiantes() {
             const fila = document.getElementById('npt-gestion-estudiantes-thead-row');
             if (!fila || !cursoActual || !paraleloActual || !nptGestionCtx) return;
-            fila.querySelectorAll('.npt-th-recuperacion-insumo-dinamico').forEach(el => el.remove());
-            nptInsumosActivosNPT(cursoActual, paraleloActual, nptGestionCtx.trimestre).forEach(ins => {
+            fila.querySelectorAll('.npt-th-insumo-dinamico, .npt-th-recuperacion-insumo-dinamico').forEach(el => el.remove());
+            const anclaExamen = document.getElementById('npt-check-todos-examen')?.closest('th');
+            const anclaRecExamen = document.getElementById('npt-check-todos-recuperacion')?.closest('th');
+            const activos = nptInsumosActivosNPT(cursoActual, paraleloActual, nptGestionCtx.trimestre);
+
+            // Columnas regulares: una por cada insumo activo.
+            activos.forEach(ins => {
+                const th = document.createElement('th');
+                th.className = 'p-2 text-center npt-th-insumo-dinamico';
+                th.innerHTML = `${escapeHtml(ins.icono)} ${escapeHtml(ins.label.replace(/^[^ ]+ /, ''))}<br><input type="checkbox" id="npt-check-todos-insumo-${ins.id}" onchange="nptSeleccionarTodosEstudiantesInsumo('${ins.id}', this.checked)" class="w-4 h-4 mt-1 align-middle" title="Seleccionar todos — ${escapeHtml(ins.label)}">`;
+                if (anclaExamen) fila.insertBefore(th, anclaExamen);
+                else fila.appendChild(th);
+            });
+
+            // Columnas de recuperación: una por cada insumo activo.
+            activos.forEach(ins => {
                 const th = document.createElement('th');
                 th.className = 'p-2 text-center npt-th-recuperacion-insumo-dinamico';
-                th.innerHTML = `Recup. ${ins.icono}<br><input type="checkbox" id="npt-check-todos-recuperacion-insumo-${ins.id}" onchange="nptSeleccionarTodosEstudiantesRecuperacionInsumo('${ins.id}', this.checked)" class="w-4 h-4 mt-1 align-middle" title="Seleccionar todos — ${escapeHtml(ins.label)}">`;
-                fila.appendChild(th);
+                th.innerHTML = `Recup. ${escapeHtml(ins.icono)}<br><input type="checkbox" id="npt-check-todos-recuperacion-insumo-${ins.id}" onchange="nptSeleccionarTodosEstudiantesRecuperacionInsumo('${ins.id}', this.checked)" class="w-4 h-4 mt-1 align-middle" title="Seleccionar todos — ${escapeHtml(ins.label)}">`;
+                if (anclaRecExamen) fila.appendChild(th);
+                else fila.appendChild(th);
             });
         }
         // Pestañas internas del modal de gestión
@@ -6212,7 +6257,12 @@ video {
             );
             const insumosActivosGestion = (cursoActual && paraleloActual && nptGestionCtx) ? nptInsumosActivosNPT(cursoActual, paraleloActual, nptGestionCtx.trimestre) : [];
             tbody.innerHTML = filtrados.length ? filtrados.map(est => {
-                const checked = nptEstudianteHabilitado(cursoActual, paraleloActual, nptGestionCtx.trimestre, est.cedula);
+                const checksInsumos = insumosActivosGestion.map(ins => {
+                    const checkedInsumo = nptInsumoEstudianteHabilitado(cursoActual, paraleloActual, nptGestionCtx.trimestre, ins.id, est.cedula);
+                    return `<td class="p-2 text-center">
+                        <input type="checkbox" data-cedula="${escapeHtml(est.cedula)}" data-insumo-hab="${ins.id}" class="npt-check-insumo-estudiante w-4 h-4 align-middle" ${checkedInsumo ? 'checked' : ''} onchange="nptSyncMasterEstudiantes()">
+                    </td>`;
+                }).join('');
                 const checkedExamen = nptExamenEstudianteHabilitado(cursoActual, paraleloActual, nptGestionCtx.trimestre, est.cedula);
                 const checkedRecuperacion = nptExamenRecuperacionEstudianteHabilitado(cursoActual, paraleloActual, nptGestionCtx.trimestre, est.cedula);
                 const celdasRecInsumos = insumosActivosGestion.map(ins => {
@@ -6224,9 +6274,7 @@ video {
                 return `<tr class="border-b">
                     <td class="p-2 text-xs">${escapeHtml(est.nombre)}</td>
                     <td class="p-2 text-xs font-mono">${escapeHtml(est.cedula)}</td>
-                    <td class="p-2 text-center">
-                        <input type="checkbox" data-cedula="${escapeHtml(est.cedula)}" class="npt-check-estudiante w-4 h-4 align-middle" ${checked ? 'checked' : ''} onchange="nptSyncMasterEstudiantes()">
-                    </td>
+                    ${checksInsumos}
                     <td class="p-2 text-center">
                         <input type="checkbox" data-cedula="${escapeHtml(est.cedula)}" class="npt-check-examen-estudiante w-4 h-4 align-middle" ${checkedExamen ? 'checked' : ''} onchange="nptSyncMasterEstudiantes()">
                     </td>
@@ -6235,7 +6283,7 @@ video {
                     </td>
                     ${celdasRecInsumos}
                 </tr>`;
-            }).join('') : `<tr><td colspan="${5 + insumosActivosGestion.length}" class="p-4 text-center text-slate-400 text-xs">Sin resultados para "${escapeHtml(term)}".</td></tr>`;
+            }).join('') : `<tr><td colspan="${4 + (insumosActivosGestion.length * 2)}" class="p-4 text-center text-slate-400 text-xs">Sin resultados para "${escapeHtml(term)}".</td></tr>`;
             nptSyncMasterEstudiantes();
         }
         function nptSyncMasterEstudiantes() {
@@ -6246,7 +6294,11 @@ video {
                 if (!checks.length) { m.checked = false; return; }
                 m.checked = Array.from(checks).every(c => c.checked);
             };
-            sync('.npt-check-estudiante', 'npt-check-todos-insumos');
+            if (cursoActual && paraleloActual && nptGestionCtx) {
+                nptInsumosActivosNPT(cursoActual, paraleloActual, nptGestionCtx.trimestre).forEach(ins => {
+                    sync(`.npt-check-insumo-estudiante[data-insumo-hab="${ins.id}"]`, `npt-check-todos-insumo-${ins.id}`);
+                });
+            }
             sync('.npt-check-examen-estudiante', 'npt-check-todos-examen');
             sync('.npt-check-recuperacion-estudiante', 'npt-check-todos-recuperacion');
             if (cursoActual && paraleloActual && nptGestionCtx) {
@@ -6728,17 +6780,35 @@ video {
                 nodoTrim.examenFechaMaxima = examenFechaMaximaInput;
                 await guardarValorFirebase(`nptConfig/${cv}/${pv}/${trimestre}/examenFechaMaxima`, examenFechaMaximaInput);
 
-                // 3) Habilitación individual de estudiantes (insumos)
-                const checks = document.querySelectorAll('#npt-gestion-estudiantes-body .npt-check-estudiante');
+                // 3) Habilitación INDIVIDUAL por cada insumo activo.
+                // Estructura Firebase: nptInsumoHabilitacionEstudiantes/{curso}/{paralelo}/{trimestre}/{insumo}/{cedula}
+                if (!nptInsumoHabilitacionEstudiantes[cv]) nptInsumoHabilitacionEstudiantes[cv] = {};
+                if (!nptInsumoHabilitacionEstudiantes[cv][pv]) nptInsumoHabilitacionEstudiantes[cv][pv] = {};
+                if (!nptInsumoHabilitacionEstudiantes[cv][pv][trimestre]) nptInsumoHabilitacionEstudiantes[cv][pv][trimestre] = {};
+                const actualizacionPorInsumo = {};
+                for (const ins of activos) {
+                    const checksInsumo = document.querySelectorAll(`#npt-gestion-estudiantes-body .npt-check-insumo-estudiante[data-insumo-hab="${ins.id}"]`);
+                    const mapaInsumo = {};
+                    checksInsumo.forEach(chk => {
+                        const ced = chk.getAttribute('data-cedula');
+                        mapaInsumo[ced] = chk.checked;
+                    });
+                    actualizacionPorInsumo[ins.id] = mapaInsumo;
+                    nptInsumoHabilitacionEstudiantes[cv][pv][trimestre][ins.id] = mapaInsumo;
+                }
+                await guardarValorFirebase(`nptInsumoHabilitacionEstudiantes/${cv}/${pv}/${trimestre}`, actualizacionPorInsumo);
+
+                // Mantener actualizado el mapa general antiguo para compatibilidad: un estudiante
+                // queda globalmente habilitado solo si está habilitado en TODOS los insumos activos.
                 if (!nptHabilitacionEstudiantes[cv]) nptHabilitacionEstudiantes[cv] = {};
                 if (!nptHabilitacionEstudiantes[cv][pv]) nptHabilitacionEstudiantes[cv][pv] = {};
                 if (!nptHabilitacionEstudiantes[cv][pv][trimestre]) nptHabilitacionEstudiantes[cv][pv][trimestre] = {};
                 const actualizacion = {};
-                checks.forEach(chk => {
-                    const ced = chk.getAttribute('data-cedula');
-                    actualizacion[ced] = chk.checked;
-                    nptHabilitacionEstudiantes[cv][pv][trimestre][ced] = chk.checked;
-                });
+                for (const est of nptGestionAlumnosCache) {
+                    const ced = est.cedula;
+                    actualizacion[ced] = activos.length > 0 && activos.every(ins => !!actualizacionPorInsumo[ins.id]?.[ced]);
+                    nptHabilitacionEstudiantes[cv][pv][trimestre][ced] = actualizacion[ced];
+                }
                 await guardarValorFirebase(`nptHabilitacionEstudiantes/${cv}/${pv}/${trimestre}`, actualizacion);
 
                 // 4) Habilitación individual de estudiantes (examen)
@@ -8595,6 +8665,7 @@ video {
                     if (tp.tipo === 'test') {
                         const notaTest = nptNotas[cedula]?.[`trimestre${t.num}`]?.[tp.id] || null;
                         const insumoHabTest = nptInsumoHabilitado(curso, paralelo, t.num, tp.id);
+                        const insumoHabEstudianteTest = nptInsumoEstudianteHabilitado(curso, paralelo, t.num, tp.id, cedula);
                         const fechaMaxTest = nptInsumoFechaMaxima(curso, paralelo, t.num, tp.id);
                         const vencidoTest = fechaMaximaVencida(fechaMaxTest);
                         const puedeRendir = nptPuedeSubirInsumo(curso, paralelo, t.num, tp.id, cedula);
@@ -8610,7 +8681,7 @@ video {
                         } else if (puedeRendir) {
                             estadoTestHtml = `<button onclick="comenzarInsumoTestNPT(${t.num},'${tp.id}')" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-700">🧪 Rendir ${escapeHtml(etiquetaTipo)}</button>
                             ${fechaMaxTest ? `<p class="text-[10px] text-amber-600 mt-1 text-center">⏳ Cierra el ${escapeHtml(formatearFechaMaxima(fechaMaxTest))}</p>` : ''}`;
-                        } else if (!insumoHabTest || !habEstudiante) {
+                        } else if (!insumoHabTest || !insumoHabEstudianteTest) {
                             estadoTestHtml = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center text-xs text-slate-500">El docente aún no ha habilitado este insumo.</div>`;
                         } else if (vencidoTest) {
                             estadoTestHtml = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center text-xs text-rose-600">⏰ El plazo venció el ${escapeHtml(formatearFechaMaxima(fechaMaxTest))}.</div>`;
@@ -8665,6 +8736,7 @@ video {
                     const notaVal = nota ? numero(nota.nota) : (ia ? numero(ia.nota) : null);
 
                     const insumoHab = nptInsumoHabilitado(curso, paralelo, t.num, tp.id);
+                    const insumoHabEstudiante = nptInsumoEstudianteHabilitado(curso, paralelo, t.num, tp.id, cedula);
                     const fechaMax = nptInsumoFechaMaxima(curso, paralelo, t.num, tp.id);
                     const vencido = fechaMaximaVencida(fechaMax);
                     const observacionDev = nptObservacionesDevolucion[cedula]?.[`trimestre${t.num}`]?.[tp.id] || null;
@@ -8717,7 +8789,7 @@ video {
                         } else {
                             estadoHtml += `<div class="text-xs text-slate-400 mb-2">📊 Pendiente de revisión por el docente.</div>`;
                         }
-                    } else if (vencido && insumoHab && habEstudiante) {
+                    } else if (vencido && insumoHab && insumoHabEstudiante) {
                         // La fecha máxima ya pasó: el estudiante ya no puede subir este insumo
                         estadoHtml = `<div class="bg-rose-50 border border-rose-200 rounded-xl p-3 mb-2 text-center text-xs text-rose-700">
                             ⏰ Fecha máxima de entrega vencida el ${escapeHtml(formatearFechaMaxima(fechaMax))}.<br>
@@ -8725,7 +8797,7 @@ video {
                         </div>`;
                     } else if (!insumoHab) {
                         estadoHtml = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-2 text-center text-xs text-slate-500">🔴 Este insumo no está habilitado por el docente.</div>`;
-                    } else if (!habEstudiante) {
+                    } else if (!insumoHabEstudiante) {
                         estadoHtml = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-2 text-center text-xs text-slate-500">🟠 No estás habilitado para este insumo.</div>`;
                     } else if (!rubricaLista) {
                         estadoHtml = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-2 text-center text-xs text-slate-500">
