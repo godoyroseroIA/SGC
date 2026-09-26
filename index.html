@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 
-<!-- Código de instalación Cliengo para https://godoyroseroia.github.io/SGC/ -->
+<!-- Código de instalación Cliengo para https://godoyroseroia.github.io/AGENTE/ -->
 <script type="text/javascript">
   (function () {
     var ldk = document.createElement('script');
@@ -2473,7 +2473,7 @@ video {
                     </div>
                 </div>
                 <p id="npt-accesos-diarios-msg" class="mt-2 text-xs font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"></p>
-                <p class="mt-1 text-[11px] text-slate-400" title="Dato informativo: no limita ni afecta tu acceso al sistema">📊 Ingresos históricos a este sistema: <span id="cnt-accesos-estudiante-individual" class="font-bold text-slate-500">0</span> · solo informativo</p>
+                <p class="mt-1 text-[11px] text-slate-400" title="Conteo histórico individual de ingresos exitosos; no limita ni afecta tu acceso">📊 Ingresos históricos individuales a este sistema: <span id="cnt-accesos-estudiante-individual" class="font-bold text-slate-500">0</span> · solo informativo</p>
             </div>
 
             <!-- Tarjetas de trimestres -->
@@ -2658,8 +2658,9 @@ video {
                     <input type="text" id="npt-solicitud-rec-asignatura" placeholder="Nombre de la asignatura" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-sm focus:ring-2 focus:ring-brand-500">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Observación adicional (opcional)</label>
+                    <label id="npt-solicitud-rec-motivo-label" class="block text-xs font-bold text-slate-600 uppercase mb-1">Observación adicional (opcional)</label>
                     <textarea id="npt-solicitud-rec-motivo" rows="2" placeholder="Cualquier información adicional que considere pertinente..." class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-sm focus:ring-2 focus:ring-brand-500"></textarea>
+                    <p id="npt-solicitud-rec-motivo-help" class="hidden text-[10px] text-amber-600 mt-1"></p>
                 </div>
                 <label class="flex items-start gap-2 text-xs text-slate-500">
                     <input type="checkbox" id="npt-solicitud-rec-confirmo" class="mt-0.5">
@@ -3710,7 +3711,7 @@ video {
             noAlert?.classList.add('hidden');
             califs.forEach((c,i) => {
                 const nota = numero(c.nota);
-                let row = `<tr class="border-b hover:bg-slate-50"><td class="p-3">${i+1}</td><td class="p-3 font-medium">${escapeHtml(c.nombre)}</td><td class="p-3 font-mono">${escapeHtml(c.cedula)}</td><td class="p-3">${escapeHtml(c.curso || cursoActual || '-')} "${escapeHtml(c.paralelo || paraleloActual || '-')}"</td><td class="p-3 text-slate-500">${escapeHtml(c.fecha)}</td><td class="p-3 text-center">${numero(c.correctas)}/10</td><td class="p-3 text-right font-bold ${nota>=7?'text-emerald-600':'text-rose-500'}">${formatearNota(nota)}</td></tr>`;
+                let row = `<tr class="border-b hover:bg-slate-50"><td class="p-3">${i+1}</td><td class="p-3 font-medium">${escapeHtml(c.nombre)}</td><td class="p-3 font-mono">${escapeHtml(c.cedula)}</td><td class="p-3">${escapeHtml(c.curso || cursoActual || '-')} "${escapeHtml(c.paralelo || paraleloActual || '-')}"</td><td class="p-3 text-slate-500">${escapeHtml(nptFormatoFecha(c.fecha))}</td><td class="p-3 text-center">${numero(c.correctas)}/10</td><td class="p-3 text-right font-bold ${nota>=7?'text-emerald-600':'text-rose-500'}">${formatearNota(nota)}</td></tr>`;
                 tbody.insertRow().innerHTML = row;
             });
         }
@@ -3725,7 +3726,7 @@ video {
             document.getElementById('detail-titulo').textContent = 'Detalles del Estudiante';
             document.getElementById('detail-btn-editar').classList.remove('hidden');
             let cont = document.getElementById('detail-content');
-            cont.innerHTML = `<div><strong>Nombre:</strong> ${escapeHtml(e.nombre)||'-'}</div><div><strong>Cédula:</strong> ${escapeHtml(e.cedula)||'-'}</div><div><strong>Curso/Paralelo:</strong> ${escapeHtml(e.curso)||'-'} "${escapeHtml(e.paralelo)||'-'}"</div><div><strong>Fecha Nac.:</strong> ${escapeHtml(e.fechaNac)||'-'}</div><div><strong>Correo:</strong> ${escapeHtml(e.correo)||'-'}</div><div><strong>Representante:</strong> ${escapeHtml(e.repNombre)||'-'}</div><div><strong>Cédula R.:</strong> ${escapeHtml(e.repCedula)||'-'}</div><div><strong>Celular R.:</strong> ${escapeHtml(e.repCelular)||'-'}</div><div class="md:col-span-2"><strong>Observaciones:</strong> ${escapeHtml(e.observaciones)||'-'}</div>`;
+            cont.innerHTML = `<div><strong>Nombre:</strong> ${escapeHtml(e.nombre)||'-'}</div><div><strong>Cédula:</strong> ${escapeHtml(e.cedula)||'-'}</div><div><strong>Curso/Paralelo:</strong> ${escapeHtml(e.curso)||'-'} "${escapeHtml(e.paralelo)||'-'}"</div><div><strong>Fecha Nac.:</strong> ${escapeHtml(nptFormatoFecha(e.fechaNac))}</div><div><strong>Correo:</strong> ${escapeHtml(e.correo)||'-'}</div><div><strong>Representante:</strong> ${escapeHtml(e.repNombre)||'-'}</div><div><strong>Cédula R.:</strong> ${escapeHtml(e.repCedula)||'-'}</div><div><strong>Celular R.:</strong> ${escapeHtml(e.repCelular)||'-'}</div><div class="md:col-span-2"><strong>Observaciones:</strong> ${escapeHtml(e.observaciones)||'-'}</div>`;
             document.getElementById('detail-modal').classList.remove('hidden');
         }
         function cerrarDetalle() { document.getElementById('detail-modal').classList.add('hidden'); cedulaFichaActual = null; }
@@ -4063,12 +4064,13 @@ video {
             document.getElementById('login-error').classList.add('hidden');
             estudianteActual = est;
             await cargarArchivosEstudianteNPT(est.cedula);
+            // Registrar y confirmar el ingreso antes de mostrar el módulo, para que el contador
+            // histórico individual quede actualizado y persistido en Firebase.
+            await registrarAccesoEstudiante(est.cedula);
             document.getElementById('npt-student-name').innerText = `${est.nombre} · ${est.curso || ''} "${est.paralelo || ''}"`;
             document.getElementById('quiz-badge').innerText = est.nombre;
             mostrarPantalla('screen-npt');
             renderTrimestresEstudiante();
-            // Registrar acceso del estudiante (contador general + individual)
-            registrarAccesoEstudiante(est.cedula);
         }
         // ==================== EXAMEN TRIMESTRAL — lógica de rendición ====================
         function mezclarArrayExamen(arr) {
@@ -4083,7 +4085,7 @@ video {
             return fecha ? fecha.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
         }
         function formatearFechaExamen(fecha) {
-            return fecha ? fecha.toLocaleDateString('es-EC', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
+            return fecha ? nptFormatoFecha(fecha) : '-';
         }
         // Quita la numeración inicial de una pregunta ("1. ¿...?" / "1) ...") solo para MOSTRARLA
         // al estudiante mientras rinde; el texto original (con su número) se conserva para el reporte.
@@ -4149,6 +4151,10 @@ video {
         // (reutiliza mezclarArrayExamen, NPT_EXAMEN_NUM_PREGUNTAS, mostrarPreguntaExamen, etc.)
         function comenzarExamenRecuperacionTrimestre(numTrimestre) {
             if (!estudianteActual) return;
+            if (!nptRecuperacionPermitidaEnTrimestre(estudianteActual.curso, estudianteActual.paralelo, numTrimestre)) {
+                alert('No puedes rendir la recuperación porque el trimestre está cerrado.');
+                return;
+            }
             if (!nptExamenRecuperacionEstudianteHabilitado(estudianteActual.curso, estudianteActual.paralelo, numTrimestre, estudianteActual.cedula)) {
                 alert('No tienes habilitado el examen de recuperación de este trimestre.');
                 return;
@@ -4300,6 +4306,10 @@ video {
         function comenzarInsumoTestRecuperacionNPT(numTrimestre, slotId) {
             if (!estudianteActual) return;
             const { curso, paralelo, cedula } = estudianteActual;
+            if (!nptRecuperacionPermitidaEnTrimestre(curso, paralelo, numTrimestre)) {
+                alert('No puedes rendir la recuperación porque el trimestre está cerrado.');
+                return;
+            }
             const etiqueta = nptInsumoEtiqueta(curso, paralelo, numTrimestre, slotId);
             if (!nptInsumoRecuperacionEstudianteHabilitado(curso, paralelo, numTrimestre, slotId, cedula)) {
                 alert(`No tienes habilitada la recuperación de "${etiqueta}". Consulta con el docente.`);
@@ -5537,6 +5547,20 @@ video {
         function nptTrimestreHabilitado(curso, paralelo, n) {
             return !!nptTrimestreInfo(curso, paralelo, n)?.habilitado;
         }
+        // Un trimestre cerrado no permite ejecutar ningún proceso de recuperación,
+        // aunque exista una nota inferior a 10, una solicitud pendiente o una
+        // habilitación individual previamente registrada. La condición se basa en
+        // el estado general del trimestre configurado por el docente.
+        function nptTrimestreCerrado(curso, paralelo, n) {
+            // El trimestre se considera cerrado cuando el control general está cerrado
+            // o cuando ya no tiene ningún insumo activo. Esto coincide con el estado
+            // visual "🔴 Cerrado" que observa el estudiante en la tarjeta del trimestre.
+            return !nptTrimestreHabilitado(curso, paralelo, n)
+                || nptCantidadInsumosActivos(curso, paralelo, n) === 0;
+        }
+        function nptRecuperacionPermitidaEnTrimestre(curso, paralelo, n) {
+            return !nptTrimestreCerrado(curso, paralelo, n);
+        }
         function nptEstudianteHabilitado(curso, paralelo, n, cedula) {
             const mapa = nptNodoTrimestre(nptHabilitacionEstudiantes, curso, paralelo, n);
             // Compatibilidad con la estructura anterior: si no existe una definición individual,
@@ -5555,6 +5579,24 @@ video {
         }
         function nptRubricaTexto(curso, paralelo, n, tipo) {
             return nptNodoTrimestre(nptRubricas, curso, paralelo, n)?.[tipo]?.texto || '';
+        }
+
+        // La verificación de firma solo se activa cuando la rúbrica del insumo
+        // menciona expresamente una firma. Tener una firma de referencia registrada
+        // NO implica que deba verificarse en todas las evaluaciones.
+        function nptRubricaSolicitaFirma(rubrica) {
+            const texto = String(rubrica || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase();
+
+            if (!/\bfirma\b/.test(texto)) return false;
+
+            // Expresiones explícitas que indican que la firma no debe considerarse.
+            if (/\b(?:sin|no|ningun(?:a|o)?|ninguna)\s+(?:la\s+)?firma\b/.test(texto)) return false;
+            if (/\b(?:no\s+se\s+(?:requiere|solicita|considera)|no\s+requiere|no\s+solicita|no\s+debe\s+(?:llevar|tener|incluir|presentar))\b[^.\n]{0,80}\bfirma\b/.test(texto)) return false;
+
+            return true;
         }
 
         // ---- Examen Supletorio: helpers de acceso (curso/paralelo, SIN trimestre) ----
@@ -5601,10 +5643,21 @@ video {
         }
 
         // ---- Modal de Solicitud de Recuperación (representante legal) ----
-        let nptSolicitudRecCtx = null; // { numTrimestre, clave, etiqueta }
-        function abrirSolicitudRecuperacionNPT(numTrimestre, clave, etiqueta, notaOriginal, fechaNotaOriginal) {
+        let nptSolicitudRecCtx = null; // { numTrimestre, clave, etiqueta, notaOriginal, fechaNotaOriginal, porVencimientoSinEntrega }
+        const nptAutoSolicitudVencimientoMostrada = new Set();
+        function abrirSolicitudRecuperacionNPT(numTrimestre, clave, etiqueta, notaOriginal, fechaNotaOriginal, porVencimientoSinEntrega = false) {
             if (!estudianteActual) return;
-            nptSolicitudRecCtx = { numTrimestre, clave, etiqueta, notaOriginal, fechaNotaOriginal };
+            if (!nptRecuperacionPermitidaEnTrimestre(estudianteActual.curso, estudianteActual.paralelo, numTrimestre)) {
+                alert('La solicitud de recuperación no está disponible porque el trimestre está cerrado.');
+                return;
+            }
+            nptSolicitudRecCtx = {
+                numTrimestre, clave, etiqueta, notaOriginal, fechaNotaOriginal,
+                porVencimientoSinEntrega: !!porVencimientoSinEntrega,
+                fechaActivacion: nptFechaActivacionEvaluacion(estudianteActual.curso, estudianteActual.paralelo, numTrimestre, clave),
+                fechaMaximaEntrega: nptFechaMaximaEvaluacion(estudianteActual.curso, estudianteActual.paralelo, numTrimestre, clave) || fechaNotaOriginal || null,
+                fechaFinSolicitud: nptFinSolicitudPorActivacion(estudianteActual.curso, estudianteActual.paralelo, numTrimestre, clave)?.toISOString() || null
+            };
             document.getElementById('npt-solicitud-rec-sub').textContent = `${trimestresEfectivos().find(x => x.num === numTrimestre)?.label || ''} · ${etiqueta}`;
             document.getElementById('npt-solicitud-rec-nombre').value = estudianteActual.repNombre || '';
             document.getElementById('npt-solicitud-rec-cedula').value = estudianteActual.repCedula || '';
@@ -5612,7 +5665,22 @@ video {
             document.getElementById('npt-solicitud-rec-celular').value = estudianteActual.repCelular || '';
             document.getElementById('npt-solicitud-rec-email-est').value = estudianteActual.correo || '';
             document.getElementById('npt-solicitud-rec-asignatura').value = '';
-            document.getElementById('npt-solicitud-rec-motivo').value = '';
+            const motivoEl = document.getElementById('npt-solicitud-rec-motivo');
+            motivoEl.value = porVencimientoSinEntrega
+                ? 'La evaluación no fue presentada dentro del plazo establecido. Motivo de la no entrega: '
+                : '';
+            motivoEl.placeholder = porVencimientoSinEntrega
+                ? 'Explique el motivo por el cual la evaluación no fue presentada dentro del plazo. Este campo es obligatorio.'
+                : 'Cualquier información adicional que considere pertinente...';
+            const motivoLabel = document.getElementById('npt-solicitud-rec-motivo-label');
+            if (motivoLabel) motivoLabel.textContent = porVencimientoSinEntrega ? 'Motivo por el cual no se presentó a tiempo' : 'Observación adicional (opcional)';
+            const motivoHelp = document.getElementById('npt-solicitud-rec-motivo-help');
+            if (motivoHelp) {
+                motivoHelp.textContent = porVencimientoSinEntrega
+                    ? 'Indique la causa real de la no entrega. El sistema no inventa ni presume el motivo.'
+                    : '';
+                motivoHelp.classList.toggle('hidden', !porVencimientoSinEntrega);
+            }
             document.getElementById('npt-solicitud-rec-confirmo').checked = false;
             document.getElementById('npt-solicitud-rec-error').classList.add('hidden');
             document.getElementById('npt-solicitud-rec-modal').classList.remove('hidden');
@@ -5623,9 +5691,14 @@ video {
         }
         async function enviarSolicitudRecuperacionNPT() {
             if (!estudianteActual || !nptSolicitudRecCtx) return;
-            const { numTrimestre, clave, etiqueta, notaOriginal, fechaNotaOriginal } = nptSolicitudRecCtx;
+            const { numTrimestre, clave, etiqueta, notaOriginal, fechaNotaOriginal, porVencimientoSinEntrega } = nptSolicitudRecCtx;
             const { cedula, nombre, curso, paralelo } = estudianteActual;
             const errEl = document.getElementById('npt-solicitud-rec-error');
+            if (!nptRecuperacionPermitidaEnTrimestre(curso, paralelo, numTrimestre)) {
+                errEl.textContent = 'La solicitud de recuperación no puede enviarse porque el trimestre está cerrado.';
+                errEl.classList.remove('hidden');
+                return;
+            }
             errEl.classList.add('hidden');
             const repNombre = texto(document.getElementById('npt-solicitud-rec-nombre').value).trim();
             const repCedula = texto(document.getElementById('npt-solicitud-rec-cedula').value).trim();
@@ -5645,6 +5718,11 @@ video {
                 errEl.classList.remove('hidden');
                 return;
             }
+            if (porVencimientoSinEntrega && !motivo) {
+                errEl.textContent = 'Debes indicar el motivo por el cual la evaluación no fue presentada dentro del plazo.';
+                errEl.classList.remove('hidden');
+                return;
+            }
             if (!confirmo) {
                 errEl.textContent = 'Debes confirmar que eres el representante legal del estudiante.';
                 errEl.classList.remove('hidden');
@@ -5658,6 +5736,10 @@ video {
                     cedula, nombre, curso, paralelo, clave, etiqueta,
                     numTrimestre,
                     notaOriginal: notaOriginal ?? null, fechaNotaOriginal: fechaNotaOriginal || null,
+                    entregaNoPresentada: !!porVencimientoSinEntrega,
+                    fechaMaximaEntrega: nptSolicitudRecCtx.fechaMaximaEntrega || null,
+                    fechaActivacion: nptSolicitudRecCtx.fechaActivacion || null,
+                    fechaFinSolicitud: nptSolicitudRecCtx.fechaFinSolicitud || null,
                     repNombre, repCedula, repEmail, repCelular, estudianteEmail, asignatura, motivo,
                     fecha: new Date().toISOString()
                 };
@@ -5681,7 +5763,7 @@ video {
         function nptFechaLargaEs(fechaStr) {
             const f = fechaStr ? new Date(fechaStr) : new Date();
             if (isNaN(f.getTime())) return '____________________';
-            return f.toLocaleDateString('es-EC', { day: 'numeric', month: 'long', year: 'numeric' });
+            return nptFormatoFecha(f);
         }
         // Genera el documento formal de la solicitud, con el formato oficial de la institución
         // (LOEI Art. 36) — visible tanto para el representante (al enviar) como para el docente
@@ -5700,11 +5782,12 @@ video {
                     Quien suscribe, <strong>${escapeHtml(s.repNombre || '_______________________')}</strong>, con CC.
                     <strong>${escapeHtml(s.repCedula || '____________')}</strong>; representante legal de
                     <strong>${escapeHtml(s.nombre)}</strong>, estudiante del curso <strong>${escapeHtml(s.curso || '___')}</strong> de BGU,
-                    paralelo <strong>${escapeHtml(s.paralelo || '__')}</strong>; solicito comedidamente la mejora de la calificación
-                    registrada en la fecha <strong>${escapeHtml(nptFechaLargaEs(s.fechaNotaOriginal))}</strong> de mi representado/a,
-                    correspondiente a la asignatura de <strong>${escapeHtml(s.asignatura || '_______________________')}</strong>, en la
-                    actividad formativa del <strong>${escapeHtml(etiquetaLimpia.toUpperCase() || '_______________________')}</strong>.
+                    paralelo <strong>${escapeHtml(s.paralelo || '__')}</strong>;
+                    ${s.entregaNoPresentada
+                        ? `solicito comedidamente se autorice la recuperación de la evaluación no presentada dentro del plazo establecido, correspondiente a la asignatura de <strong>${escapeHtml(s.asignatura || '_______________________')}</strong>, en la actividad formativa del <strong>${escapeHtml(etiquetaLimpia.toUpperCase() || '_______________________')}</strong>.`
+                        : `solicito comedidamente la mejora de la calificación registrada en la fecha <strong>${escapeHtml(nptFechaLargaEs(s.fechaNotaOriginal))}</strong> de mi representado/a, correspondiente a la asignatura de <strong>${escapeHtml(s.asignatura || '_______________________')}</strong>, en la actividad formativa del <strong>${escapeHtml(etiquetaLimpia.toUpperCase() || '_______________________')}</strong>.`}
                 </p>
+                ${s.motivo ? `<p style="text-align:justify; margin-top:14px; line-height:1.6;"><strong>Motivo de la solicitud:</strong> ${escapeHtml(s.motivo)}</p>` : ''}
                 <p style="text-align:justify; margin-top:14px; line-height:1.6;">
                     Acogiéndome al Reglamento de la LOEI Artículo 36.- Evaluación para mejorar una calificación en educación básica media,
                     básica superior y bachillerato.- Si una o un estudiante, de Educación Básica Media, Básica Superior o Bachillerato,
@@ -5986,12 +6069,17 @@ video {
             if (!nptConfig[cv][pv]) nptConfig[cv][pv] = {};
             if (!nptConfig[cv][pv][num]) nptConfig[cv][pv][num] = {};
             nptConfig[cv][pv][num].examenHabilitado = nuevoEstado;
+            nptConfig[cv][pv][num].examenActivadoEn = nuevoEstado
+                ? new Date().toISOString()
+                : null;
             renderControlTrimestres();
             try {
                 await guardarValorFirebase(`nptConfig/${cv}/${pv}/${num}/examenHabilitado`, nuevoEstado);
+                await guardarValorFirebase(`nptConfig/${cv}/${pv}/${num}/examenActivadoEn`, nptConfig[cv][pv][num].examenActivadoEn);
             } catch(e) {
                 console.error(e);
                 nptConfig[cv][pv][num].examenHabilitado = actual;
+                nptConfig[cv][pv][num].examenActivadoEn = actual ? nptConfig[cv][pv][num].examenActivadoEn : null;
                 renderControlTrimestres();
                 alert('Error al guardar. Revisa la conexión.');
             }
@@ -6046,7 +6134,10 @@ video {
             // "Gestionar" — este botón solo debe tocar "habilitado", nunca pisar el resto.
             NPT_INSUMO_SLOTS.forEach(tipo => {
                 const actual = nodo.insumos[tipo] || {};
-                nodo.insumos[tipo] = { ...actual, habilitado: nuevoEstado };
+                const activadaEn = nuevoEstado
+                    ? (actual.habilitado && actual.activadaEn ? actual.activadaEn : new Date().toISOString())
+                    : null;
+                nodo.insumos[tipo] = { ...actual, habilitado: nuevoEstado, activadaEn };
                 actualizacionInsumos[tipo] = nodo.insumos[tipo];
             });
             renderControlTrimestres();
@@ -6719,7 +6810,11 @@ video {
                     const fechaMaxima = (fInput && fInput.value) ? fInput.value : null;
                     const recuperacionHabilitado = !!(chkRec && chkRec.checked);
                     const cantidadPreguntas = cantidadInput?.value ? parseInt(cantidadInput.value, 10) || null : null;
-                    const registroInsumo = { habilitado, etiqueta, tipo, fechaMaxima, recuperacionHabilitado, cantidadPreguntas };
+                    const registroAnterior = nodoTrim.insumos[slotId] || {};
+                    const activadaEn = habilitado
+                        ? (registroAnterior.habilitado && registroAnterior.activadaEn ? registroAnterior.activadaEn : new Date().toISOString())
+                        : null;
+                    const registroInsumo = { habilitado, etiqueta, tipo, fechaMaxima, recuperacionHabilitado, cantidadPreguntas, activadaEn };
                     nodoTrim.insumos[slotId] = registroInsumo;
                     insumosAGuardar[slotId] = registroInsumo;
                 }
@@ -6775,10 +6870,16 @@ video {
                 nptExamenesRecuperacion[cv][pv][trimestre] = bancoRecuperacionExamen;
                 await guardarValorFirebase(`nptExamenesRecuperacion/${cv}/${pv}/${trimestre}`, bancoRecuperacionExamen);
 
-                // 2.1) Fecha máxima para rendir el examen
+                // 2.1) Fecha máxima para rendir el examen + fecha de activación
                 const examenFechaMaximaInput = document.getElementById('npt-examen-fecha-maxima')?.value || null;
                 nodoTrim.examenFechaMaxima = examenFechaMaximaInput;
+                if (nodoTrim.examenHabilitado) {
+                    nodoTrim.examenActivadoEn = nodoTrim.examenActivadoEn || new Date().toISOString();
+                } else {
+                    nodoTrim.examenActivadoEn = null;
+                }
                 await guardarValorFirebase(`nptConfig/${cv}/${pv}/${trimestre}/examenFechaMaxima`, examenFechaMaximaInput);
+                await guardarValorFirebase(`nptConfig/${cv}/${pv}/${trimestre}/examenActivadoEn`, nodoTrim.examenActivadoEn);
 
                 // 3) Habilitación INDIVIDUAL por cada insumo activo.
                 // Estructura Firebase: nptInsumoHabilitacionEstudiantes/{curso}/{paralelo}/{trimestre}/{insumo}/{cedula}
@@ -7331,7 +7432,9 @@ video {
                 // autocalifica) y que ya exista una rúbrica publicada para este curso/paralelo/
                 // trimestre específico, para no mostrar el botón "Ejecutar rúbrica" cuando aún
                 // fallaría con un mensaje de error.
-                const tieneRubrica = !esTest && !!nptRubricaTexto(est.curso, est.paralelo, t.num, tp.id);
+                const rubricaActual = nptRubricaTexto(est.curso, est.paralelo, t.num, tp.id);
+                const tieneRubrica = !esTest && !!rubricaActual;
+                const rubricaSolicitaFirma = !esTest && nptRubricaSolicitaFirma(rubricaActual);
                 const tr = document.createElement('tr');
                 tr.className = 'border-b hover:bg-slate-50';
                 tr.innerHTML = `
@@ -7348,7 +7451,7 @@ video {
                         <span class="text-xs font-bold px-2 py-0.5 rounded-full ${badgeClass}">${notaTexto}</span>
                         ${verificado ? '<div class="text-[10px] text-emerald-600 font-bold mt-0.5">✔ Verificado</div>' : (ia ? '<div class="text-[10px] text-amber-600 font-bold mt-0.5">⏳ Eval. IA — pendiente verificar</div>' : '')}
                         ${ia?.comentario ? `<div class="text-[10px] text-slate-400 mt-0.5 max-w-[160px]">${escapeHtml(ia.comentario)}</div>` : ''}
-                        ${(ia && ia.firmaDetectada !== null && ia.firmaDetectada !== undefined) ? `<div class="text-[10px] font-bold mt-0.5 ${ia.firmaCoincide ? 'text-emerald-600' : 'text-rose-600'}" title="${escapeHtml(ia.comentarioFirma || '')}">${ia.firmaCoincide ? '✅ Firma coincide' : (ia.firmaDetectada ? '⚠️ Firma no coincide' : '⚠️ Sin firma del docente')}</div>` : ''}
+                        ${(rubricaSolicitaFirma && ia && ia.firmaDetectada !== null && ia.firmaDetectada !== undefined) ? `<div class="text-[10px] font-bold mt-0.5 ${ia.firmaCoincide ? 'text-emerald-600' : 'text-rose-600'}" title="${escapeHtml(ia.comentarioFirma || '')}">${ia.firmaCoincide ? '✅ Firma coincide' : (ia.firmaDetectada ? '⚠️ Firma no coincide' : '⚠️ Sin firma del docente')}</div>` : ''}
                         ${esRecuperacion ? `<div class="text-[9px] text-purple-600 font-bold mt-0.5">${seMantieneOriginalFila ? `(no supera la original: se mantiene ${formatearNota(notaOriginalDeReferenciaFila)})` : '(se promedia con la original)'}</div>` : ''}
                     </td>
                     <td class="p-2 text-center space-y-1">
@@ -7406,24 +7509,38 @@ video {
         // solicitud desde "📩 Solicitudes de Recuperación"; al aprobarla se habilita automáticamente
         // la recuperación para ESE estudiante en ESE insumo/examen (mismo mecanismo que ya usa el
         // docente para habilitarla manualmente).
-        const NPT_DIAS_LIMITE_SOLICITUD_RECUPERACION = 8;
+        const NPT_DIAS_LIMITE_SOLICITUD_RECUPERACION = 7;
         // ==================== FORMATO DE FECHA ESTÁNDAR DEL SISTEMA: dd/mm/aaaa ====================
         // Todas las fechas mostradas al usuario (reportes, pantallas, CSV) deben pasar por una de
         // estas dos funciones — así se garantiza el mismo formato sin importar el idioma/configuración
         // regional del navegador (antes se usaba toLocaleString() sin configuración regional fija,
         // lo que podía mostrar la fecha en formato mm/dd/aaaa en un navegador en inglés).
+        function nptParseFecha(valor) {
+            if (!valor) return null;
+            if (valor instanceof Date) return isNaN(valor.getTime()) ? null : valor;
+            const textoFecha = String(valor).trim();
+            // Acepta tanto ISO/RTDB como el formato institucional dd/mm/aaaa
+            // para no alterar ni romper registros históricos ya almacenados.
+            const m = textoFecha.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+            if (m) {
+                const f = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4] || 0), Number(m[5] || 0), Number(m[6] || 0));
+                return isNaN(f.getTime()) ? null : f;
+            }
+            const f = new Date(valor);
+            return isNaN(f.getTime()) ? null : f;
+        }
         function nptFormatoFecha(valor) {
             if (!valor) return '-';
-            const f = valor instanceof Date ? valor : new Date(valor);
-            if (isNaN(f.getTime())) return typeof valor === 'string' ? valor : '-';
+            const f = nptParseFecha(valor);
+            if (!f) return typeof valor === 'string' ? valor : '-';
             const dd = String(f.getDate()).padStart(2, '0');
             const mm = String(f.getMonth() + 1).padStart(2, '0');
             return `${dd}/${mm}/${f.getFullYear()}`;
         }
         function nptFormatoFechaHora(valor) {
             if (!valor) return '-';
-            const f = valor instanceof Date ? valor : new Date(valor);
-            if (isNaN(f.getTime())) return typeof valor === 'string' ? valor : '-';
+            const f = nptParseFecha(valor);
+            if (!f) return typeof valor === 'string' ? valor : '-';
             const hh = String(f.getHours()).padStart(2, '0');
             const min = String(f.getMinutes()).padStart(2, '0');
             return `${nptFormatoFecha(f)} ${hh}:${min}`;
@@ -7436,6 +7553,73 @@ video {
         }
         function nptSolicitudRecuperacionDe(cedula, numTrimestre, clave) {
             return nptSolicitudesRecuperacion[cedula]?.[`trimestre${numTrimestre}`]?.[clave] || null;
+        }
+        function nptFechaActivacionEvaluacion(curso, paralelo, numTrimestre, clave) {
+            if (clave === 'examen') {
+                return nptNodoTrimestre(nptConfig, curso, paralelo, numTrimestre)?.examenActivadoEn || null;
+            }
+            return nptInsumoInfo(curso, paralelo, numTrimestre, clave)?.activadaEn || null;
+        }
+        // El plazo de recuperación comienza cuando VENCE la evaluación, no cuando se activa.
+        // Ejemplo: si la fecha máxima es 24/09/2026 22:59, la solicitud queda disponible
+        // desde ese vencimiento hasta 01/10/2026 22:59 (7 días después).
+        function nptFechaMaximaEvaluacion(curso, paralelo, numTrimestre, clave) {
+            return clave === 'examen'
+                ? nptExamenFechaMaxima(curso, paralelo, numTrimestre)
+                : nptInsumoFechaMaxima(curso, paralelo, numTrimestre, clave);
+        }
+        function nptFinSolicitudPorActivacion(curso, paralelo, numTrimestre, clave) {
+            const fechaMaxima = nptFechaMaximaEvaluacion(curso, paralelo, numTrimestre, clave);
+            if (!fechaMaxima) return null;
+            const f = nptParseFecha(fechaMaxima);
+            if (!f) return null;
+            return new Date(f.getTime() + NPT_DIAS_LIMITE_SOLICITUD_RECUPERACION * 86400000);
+        }
+        function nptDiasDisponiblesSolicitud(fechaInicio, fechaFin) {
+            if (!fechaInicio || !fechaFin) return null;
+            const a = new Date(fechaInicio), b = new Date(fechaFin);
+            if (isNaN(a.getTime()) || isNaN(b.getTime())) return null;
+            return Math.max(0, (b.getTime() - a.getTime()) / 86400000);
+        }
+        function nptSolicitudExpiradaInfo(curso, paralelo, numTrimestre, clave) {
+            if (!nptRecuperacionPermitidaEnTrimestre(curso, paralelo, numTrimestre)) return null;
+            const activacion = nptFechaActivacionEvaluacion(curso, paralelo, numTrimestre, clave);
+            const fin = nptFinSolicitudPorActivacion(curso, paralelo, numTrimestre, clave);
+            if (!activacion || !fin || Date.now() < fin.getTime()) return null;
+            const fechaMaxima = clave === 'examen'
+                ? nptExamenFechaMaxima(curso, paralelo, numTrimestre)
+                : nptInsumoFechaMaxima(curso, paralelo, numTrimestre, clave);
+            if (!fechaMaxima || !fechaMaximaVencida(fechaMaxima)) return null;
+            const inicio = nptParseFecha(fechaMaxima);
+            const fActivacion = nptParseFecha(activacion);
+            const fFin = nptParseFecha(fin);
+            if (!inicio || !fActivacion || !fFin) return null;
+            // La oportunidad de recuperación inicia exactamente al vencer la fecha de entrega.
+            const disponibleDesde = inicio;
+            const diasDisponibles = Math.max(0, (fFin.getTime() - disponibleDesde.getTime()) / 86400000);
+            return {
+                fechaActivacion: fActivacion.toISOString(),
+                fechaInicioDisponibilidad: disponibleDesde.toISOString(),
+                fechaFinDisponibilidad: fFin.toISOString(),
+                diasDisponibles: Math.round(diasDisponibles * 100) / 100,
+                estuvoDisponible: fFin.getTime() > disponibleDesde.getTime()
+            };
+        }
+        function nptBloqueSolicitudExpiradaHtml(curso, paralelo, numTrimestre, clave) {
+            const info = nptSolicitudExpiradaInfo(curso, paralelo, numTrimestre, clave);
+            if (!info) return '';
+            if (!info.estuvoDisponible) {
+                return `<div class="bg-slate-100 border border-slate-300 rounded-xl p-3 mt-2 text-center text-xs text-slate-600">
+                    <p class="font-bold">🔒 Solicitud de recuperación inhabilitada</p>
+                    <p class="text-[11px] mt-1">El plazo de 7 días posteriores al vencimiento de la evaluación terminó; no se realizó la solicitud dentro del período disponible.</p>
+                    <p class="text-[10px] text-slate-400 mt-1">Constancia registrada: no se realizó solicitud dentro del plazo establecido.</p>
+                </div>`;
+            }
+            return `<div class="bg-slate-100 border border-slate-300 rounded-xl p-3 mt-2 text-center text-xs text-slate-600">
+                <p class="font-bold">🔒 Solicitud de recuperación inhabilitada por vencimiento del plazo</p>
+                <p class="text-[11px] mt-1">Estuvo disponible durante <strong>${escapeHtml(String(info.diasDisponibles))} día(s)</strong>, desde el ${escapeHtml(nptFormatoFechaHora(info.fechaInicioDisponibilidad))} hasta el ${escapeHtml(nptFormatoFechaHora(info.fechaFinDisponibilidad))}.</p>
+                <p class="text-[10px] text-slate-400 mt-1">No se realizó la solicitud dentro del período establecido. Esta situación queda registrada como constancia del proceso.</p>
+            </div>`;
         }
         // ¿Ya está habilitada la recuperación para este estudiante en este insumo/examen? (por
         // aprobación de una solicitud) — si ya está habilitada no tiene sentido seguir mostrando el
@@ -7452,27 +7636,228 @@ video {
             }
             return nptNodoTrimestre(nptInsumoRecuperacionHabilitacionEstudiantes, curso, paralelo, numTrimestre)?.[clave]?.[cedula] === true;
         }
+        // Detecta evaluaciones que vencieron sin que el estudiante haya presentado la actividad.
+        // La solicitud solo puede abrirse desde el vencimiento de la evaluación hasta 7 días
+        // después de su activación. Una vez agotado ese plazo se registra constancia de que no
+        // fue solicitada.
+        function nptEvaluacionesVencidasSinEntrega(cedula, curso, paralelo) {
+            const pendientes = [];
+            trimestresEfectivos().forEach(t => {
+                if (!nptRecuperacionPermitidaEnTrimestre(curso, paralelo, t.num)) return;
+                nptInsumosActivosNPT(curso, paralelo, t.num).forEach(tp => {
+                    const fechaMaxima = nptInsumoFechaMaxima(curso, paralelo, t.num, tp.id);
+                    const fechaActivacion = nptFechaActivacionEvaluacion(curso, paralelo, t.num, tp.id);
+                    const finSolicitud = nptFinSolicitudPorActivacion(curso, paralelo, t.num, tp.id);
+                    if (!fechaMaxima || !fechaMaximaVencida(fechaMaxima) || !fechaActivacion || !finSolicitud) return;
+                    if (!nptInsumoHabilitado(curso, paralelo, t.num, tp.id)) return;
+                    if (!nptInsumoEstudianteHabilitado(curso, paralelo, t.num, tp.id, cedula)) return;
+                    if (nptRecuperacionYaHabilitadaParaSolicitud(curso, paralelo, t.num, tp.id, cedula)) return;
+                    if (nptSolicitudRecuperacionDe(cedula, t.num, tp.id)) return;
+                    if (Date.now() >= finSolicitud.getTime()) return;
+                    const arch = nptArchivos[cedula]?.[`trimestre${t.num}`]?.[tp.id] || null;
+                    const nota = nptNotas[cedula]?.[`trimestre${t.num}`]?.[tp.id] || null;
+                    const ia = nptEvaluacionesIA[cedula]?.[`trimestre${t.num}`]?.[tp.id] || null;
+                    const noPresentada = tp.tipo === 'test' ? !nota : (!arch && !nota && !ia);
+                    if (noPresentada) pendientes.push({
+                        numTrimestre: t.num, clave: tp.id, etiqueta: tp.label, notaOriginal: null,
+                        fechaNotaOriginal: fechaMaxima, fechaMaximaEntrega: fechaMaxima,
+                        fechaActivacion, fechaFinSolicitud: finSolicitud.toISOString()
+                    });
+                });
+
+                const fechaExamen = nptExamenFechaMaxima(curso, paralelo, t.num);
+                const fechaActivacionExamen = nptFechaActivacionEvaluacion(curso, paralelo, t.num, 'examen');
+                const finSolicitudExamen = nptFinSolicitudPorActivacion(curso, paralelo, t.num, 'examen');
+                if (fechaExamen && fechaMaximaVencida(fechaExamen) && fechaActivacionExamen && finSolicitudExamen &&
+                    Date.now() < finSolicitudExamen.getTime() &&
+                    nptExamenHabilitado(curso, paralelo, t.num) &&
+                    nptExamenEstudianteHabilitado(curso, paralelo, t.num, cedula) &&
+                    !nptRecuperacionYaHabilitadaParaSolicitud(curso, paralelo, t.num, 'examen', cedula) &&
+                    !nptSolicitudRecuperacionDe(cedula, t.num, 'examen')) {
+                    const notaExamen = nptNotas[cedula]?.[`trimestre${t.num}`]?.examen || null;
+                    if (!notaExamen) pendientes.push({
+                        numTrimestre: t.num, clave: 'examen', etiqueta: '📝 Examen Trimestral', notaOriginal: null,
+                        fechaNotaOriginal: fechaExamen, fechaMaximaEntrega: fechaExamen,
+                        fechaActivacion: fechaActivacionExamen, fechaFinSolicitud: finSolicitudExamen.toISOString()
+                    });
+                }
+            });
+            return pendientes;
+        }
+
+        async function nptRegistrarSolicitudRecuperacionExpirada(cedula, item) {
+            const ruta = `nptSolicitudesRecuperacionExpiradas/${cedula}/trimestre${item.numTrimestre}/${item.clave}`;
+            try {
+                const existente = await leerValorRutaFirebase(ruta);
+                if (existente) return existente;
+                const inicio = new Date(item.fechaMaximaEntrega);
+                const activacion = new Date(item.fechaActivacion);
+                const fin = new Date(item.fechaFinSolicitud);
+                const disponibleDesde = isNaN(inicio.getTime()) || inicio > fin ? fin : inicio;
+                const diasDisponibles = Math.max(0, (fin.getTime() - disponibleDesde.getTime()) / 86400000);
+                const registro = {
+                    estado: 'no_solicitada_expirada',
+                    motivo: 'El estudiante/representante no realizó la solicitud de recuperación dentro del plazo establecido.',
+                    cedula, curso: estudianteActual?.curso || item.curso || null, paralelo: estudianteActual?.paralelo || item.paralelo || null,
+                    numTrimestre: item.numTrimestre, clave: item.clave, etiqueta: item.etiqueta,
+                    fechaActivacion: item.fechaActivacion, fechaMaximaEntrega: item.fechaMaximaEntrega,
+                    fechaInicioDisponibilidad: disponibleDesde.toISOString(), fechaFinDisponibilidad: item.fechaFinSolicitud,
+                    diasDisponibles: Math.round(diasDisponibles * 100) / 100,
+                    notaOriginal: item.notaOriginal ?? null,
+                    registradoEn: new Date().toISOString()
+                };
+                await guardarValorFirebase(ruta, registro);
+                return registro;
+            } catch (e) {
+                console.warn('No se pudo registrar expiración de solicitud de recuperación:', e.message);
+                return null;
+            }
+        }
+
+        // Registra constancia cuando ya terminó el plazo de 7 días sin solicitud.
+        async function nptRegistrarExpiracionesSolicitud() {
+            if (!estudianteActual) return;
+            const { cedula, curso, paralelo } = estudianteActual;
+            const ahora = Date.now();
+            const items = [];
+            trimestresEfectivos().forEach(t => {
+                if (!nptRecuperacionPermitidaEnTrimestre(curso, paralelo, t.num)) return;
+                nptInsumosActivosNPT(curso, paralelo, t.num).forEach(tp => {
+                    const fechaActivacion = nptFechaActivacionEvaluacion(curso, paralelo, t.num, tp.id);
+                    const fin = nptFinSolicitudPorActivacion(curso, paralelo, t.num, tp.id);
+                    if (!fechaActivacion || !fin || ahora < fin.getTime()) return;
+                    if (!nptInsumoHabilitado(curso, paralelo, t.num, tp.id) || !nptInsumoEstudianteHabilitado(curso, paralelo, t.num, tp.id, cedula)) return;
+                    if (nptSolicitudRecuperacionDe(cedula, t.num, tp.id) || nptRecuperacionYaHabilitadaParaSolicitud(curso, paralelo, t.num, tp.id, cedula)) return;
+                    const arch = nptArchivos[cedula]?.[`trimestre${t.num}`]?.[tp.id] || null;
+                    const nota = nptNotas[cedula]?.[`trimestre${t.num}`]?.[tp.id] || null;
+                    const ia = nptEvaluacionesIA[cedula]?.[`trimestre${t.num}`]?.[tp.id] || null;
+                    const fechaMaxima = nptInsumoFechaMaxima(curso, paralelo, t.num, tp.id);
+                    const noPresentada = tp.tipo === 'test' ? !nota : (!arch && !nota && !ia);
+                    const notaDisponibleParaRecuperacion = !!nota && numero(nota.nota) < 10 && (tp.tipo === 'test' || nota.verificado);
+                    if (noPresentada && fechaMaxima && fechaMaximaVencida(fechaMaxima)) {
+                        items.push({ numTrimestre:t.num, clave:tp.id, etiqueta:tp.label, fechaActivacion, fechaMaximaEntrega:fechaMaxima, fechaFinSolicitud:fin.toISOString(), curso, paralelo, notaOriginal:null });
+                    } else if (notaDisponibleParaRecuperacion) {
+                        items.push({ numTrimestre:t.num, clave:tp.id, etiqueta:tp.label, fechaActivacion, fechaMaximaEntrega:fechaMaxima || nota.fecha || nota.fechaNota || null, fechaFinSolicitud:fin.toISOString(), curso, paralelo, notaOriginal:numero(nota.nota) });
+                    }
+                });
+                const fechaActivacion = nptFechaActivacionEvaluacion(curso, paralelo, t.num, 'examen');
+                const fin = nptFinSolicitudPorActivacion(curso, paralelo, t.num, 'examen');
+                const fechaMaxima = nptExamenFechaMaxima(curso, paralelo, t.num);
+                const notaExamen = nptNotas[cedula]?.[`trimestre${t.num}`]?.examen || null;
+                if (fechaActivacion && fin && ahora >= fin.getTime() &&
+                    nptExamenHabilitado(curso, paralelo, t.num) && nptExamenEstudianteHabilitado(curso, paralelo, t.num, cedula) &&
+                    !nptSolicitudRecuperacionDe(cedula, t.num, 'examen') && !nptRecuperacionYaHabilitadaParaSolicitud(curso, paralelo, t.num, 'examen', cedula)) {
+                    if (!notaExamen && fechaMaxima && fechaMaximaVencida(fechaMaxima)) {
+                        items.push({ numTrimestre:t.num, clave:'examen', etiqueta:'📝 Examen Trimestral', fechaActivacion, fechaMaximaEntrega:fechaMaxima, fechaFinSolicitud:fin.toISOString(), curso, paralelo, notaOriginal:null });
+                    } else if (notaExamen && numero(notaExamen.nota) < 10) {
+                        items.push({ numTrimestre:t.num, clave:'examen', etiqueta:'📝 Examen Trimestral', fechaActivacion, fechaMaximaEntrega:fechaMaxima || notaExamen.fecha || notaExamen.fechaNota || null, fechaFinSolicitud:fin.toISOString(), curso, paralelo, notaOriginal:numero(notaExamen.nota) });
+                    }
+                }
+            });
+            await Promise.all(items.map(item => nptRegistrarSolicitudRecuperacionExpirada(cedula, item)));
+        }
+
+        // Activa automáticamente la primera solicitud pendiente por evaluación vencida y no presentada.
+        // La ventana de solicitud está limitada a 7 días posteriores al vencimiento de la evaluación.
+        function nptActivarSolicitudRecuperacionVencida() {
+            if (!estudianteActual || nptSolicitudRecCtx) return;
+            const modal = document.getElementById('npt-solicitud-rec-modal');
+            if (!modal || !modal.classList.contains('hidden')) return;
+            const { cedula, curso, paralelo } = estudianteActual;
+            const pendientes = nptEvaluacionesVencidasSinEntrega(cedula, curso, paralelo);
+            const siguiente = pendientes.find(x => !nptAutoSolicitudVencimientoMostrada.has(`${cedula}|${x.numTrimestre}|${x.clave}`));
+            if (!siguiente) return;
+            const key = `${cedula}|${siguiente.numTrimestre}|${siguiente.clave}`;
+            nptAutoSolicitudVencimientoMostrada.add(key);
+            setTimeout(() => {
+                if (!estudianteActual || estudianteActual.cedula !== cedula) return;
+                abrirSolicitudRecuperacionNPT(
+                    siguiente.numTrimestre, siguiente.clave, siguiente.etiqueta,
+                    siguiente.notaOriginal, siguiente.fechaNotaOriginal, true
+                );
+                if (nptSolicitudRecCtx) {
+                    nptSolicitudRecCtx.fechaMaximaEntrega = siguiente.fechaMaximaEntrega;
+                    nptSolicitudRecCtx.fechaActivacion = siguiente.fechaActivacion;
+                    nptSolicitudRecCtx.fechaFinSolicitud = siguiente.fechaFinSolicitud;
+                }
+            }, 250);
+        }
+
+        // Evidencia + rúbrica de una evaluación ya aplicada. Este bloque es permanente en el
+        // módulo del estudiante: no desaparece cuando la nota pasa a estado verificado.
+        // Para evaluaciones IA se prioriza la rúbrica guardada como snapshot en la evaluación;
+        // si se trata de una calificación manual o de un registro histórico anterior a este cambio,
+        // se usa como respaldo la rúbrica actualmente publicada.
+        function nptEvidenciaRubricaAplicadaHtml(cedula, curso, paralelo, numTrimestre, clave, arch, ia, etiqueta, opciones = {}) {
+            const rubrica = texto(ia?.rubricaAplicada || nptRubricaTexto(curso, paralelo, numTrimestre, clave)).trim();
+            let evidencia = '';
+            if (arch?.url) {
+                evidencia = `<a href="${escapeHtml(arch.url)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs font-bold text-brand-700 hover:underline">🔗 Abrir evidencia entregada</a>`;
+            } else if (arch?.base64) {
+                evidencia = `<button type="button" onclick="verPDFEstudiante(${JSON.stringify(String(cedula))},${numTrimestre},${JSON.stringify(String(clave))})" class="text-xs font-bold text-brand-700 hover:underline">📄 Ver evidencia entregada</button>`;
+            } else if (opciones.testAplicado) {
+                evidencia = `<span class="text-xs font-semibold text-slate-600">🧪 Evaluación tipo Test rendida y registrada en el sistema.</span>`;
+            } else if (opciones.examenAplicado) {
+                evidencia = `<span class="text-xs font-semibold text-slate-600">📝 Examen trimestral rendido y registrado en el sistema.</span>`;
+            } else {
+                evidencia = `<span class="text-xs text-slate-500">No hay un enlace de evidencia disponible para esta evaluación.</span>`;
+            }
+
+            const rubricBtn = rubrica
+                ? `<button type="button" onclick="verRubricaAplicadaEstudiante(${numTrimestre},${JSON.stringify(String(clave))},${JSON.stringify(rubrica)},${JSON.stringify(etiqueta || '')})" class="text-xs font-bold text-brand-700 hover:underline">📋 Ver rúbrica aplicada</button>`
+                : `<span class="text-xs text-slate-400">No hay rúbrica textual registrada para esta evaluación.</span>`;
+
+            return `<div class="bg-white border border-slate-200 rounded-xl p-3 mt-2">
+                <p class="text-[11px] font-black text-slate-600 uppercase tracking-wide mb-2">📚 Evidencia y rúbrica de la evaluación aplicada</p>
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-2">${evidencia}${rubricBtn}</div>
+                ${ia?.fecha ? `<p class="text-[10px] text-slate-400 mt-2">Evaluación registrada: ${escapeHtml(nptFormatoFechaHora(ia.fecha))}</p>` : ''}
+            </div>`;
+        }
+
+        function verRubricaAplicadaEstudiante(numTrimestre, clave, rubrica, etiqueta) {
+            if (!estudianteActual) return;
+            const t = trimestresEfectivos().find(x => x.num === numTrimestre);
+            document.getElementById('npt-rubrica-modal-sub').textContent = `${t?.label || ''} · ${etiqueta || clave} · Rúbrica aplicada`;
+            document.getElementById('npt-rubrica-modal-texto').textContent = rubrica || 'No hay rúbrica textual registrada para esta evaluación.';
+            document.getElementById('npt-rubrica-modal').classList.remove('hidden');
+        }
+
         // Bloque de UI (botón/estado) a mostrar junto a una nota original — reutilizado para
         // insumos tipo Texto, insumos tipo Test y el examen trimestral.
         function nptBloqueSolicitudRecuperacionHtml(cedula, curso, paralelo, numTrimestre, clave, notaVal, fechaNota, etiqueta) {
-            if (notaVal === null || notaVal >= 10) return '';
+            const fechaMaxima = nptFechaMaximaEvaluacion(curso, paralelo, numTrimestre, clave) || fechaNota || null;
+            const vencida = !!fechaMaxima && fechaMaximaVencida(fechaMaxima);
+            const esNoPresentada = notaVal === null && vencida;
+            if (notaVal === null && !esNoPresentada) return '';
+            if (notaVal !== null && notaVal >= 10) return '';
+            if (!nptRecuperacionPermitidaEnTrimestre(curso, paralelo, numTrimestre)) {
+                return `<div class="bg-slate-100 border border-slate-300 rounded-xl p-2 mt-2 text-[11px] text-slate-600 font-semibold text-center">🔒 Recuperación no disponible: el ${escapeHtml(trimestresEfectivos().find(x => x.num === numTrimestre)?.label || 'trimestre')} está cerrado.</div>`;
+            }
             if (nptRecuperacionYaHabilitadaParaSolicitud(curso, paralelo, numTrimestre, clave, cedula)) return '';
-            const dias = nptDiasDesde(fechaNota);
+            const fechaActivacion = nptFechaActivacionEvaluacion(curso, paralelo, numTrimestre, clave) || fechaNota;
+            const limite = nptFinSolicitudPorActivacion(curso, paralelo, numTrimestre, clave)
+                || (fechaMaxima ? new Date(nptParseFecha(fechaMaxima).getTime() + NPT_DIAS_LIMITE_SOLICITUD_RECUPERACION * 86400000) : null);
+            if (!limite) return '';
             const solicitud = nptSolicitudRecuperacionDe(cedula, numTrimestre, clave);
             if (solicitud?.estado === 'pendiente') {
                 return `<div class="bg-amber-50 border border-amber-200 rounded-xl p-2 mt-2 text-[11px] text-amber-700 font-semibold text-center">⏳ Solicitud de recuperación enviada — esperando respuesta del docente.</div>`;
             }
-            if (dias > NPT_DIAS_LIMITE_SOLICITUD_RECUPERACION) {
+            if (Date.now() >= limite.getTime()) {
                 return solicitud?.estado === 'rechazada'
-                    ? `<div class="bg-rose-50 border border-rose-200 rounded-xl p-2 mt-2 text-[11px] text-rose-700"><strong>Solicitud de recuperación rechazada:</strong> ${escapeHtml(solicitud.motivoRespuesta || 'Sin motivo indicado.')}<br>El plazo de ${NPT_DIAS_LIMITE_SOLICITUD_RECUPERACION} días para volver a solicitarla ya venció.</div>`
-                    : '';
+                    ? `<div class="bg-rose-50 border border-rose-200 rounded-xl p-2 mt-2 text-[11px] text-rose-700"><strong>Solicitud de recuperación rechazada:</strong> ${escapeHtml(solicitud.motivoRespuesta || 'Sin motivo indicado.')}<br>El plazo de ${NPT_DIAS_LIMITE_SOLICITUD_RECUPERACION} días posteriores al vencimiento de la evaluación ya venció.</div>`
+                    : `<div class="bg-slate-100 border border-slate-300 rounded-xl p-2 mt-2 text-[11px] text-slate-600 font-semibold text-center">🔒 El plazo de ${NPT_DIAS_LIMITE_SOLICITUD_RECUPERACION} días posteriores al vencimiento de la evaluación para solicitar recuperación ya venció. La solicitud no realizada queda registrada como proceso no efectuado.</div>`;
             }
-            const limite = new Date(new Date(fechaNota).getTime() + NPT_DIAS_LIMITE_SOLICITUD_RECUPERACION * 86400000);
             const rechazoHtml = solicitud?.estado === 'rechazada'
                 ? `<div class="bg-rose-50 border border-rose-200 rounded-xl p-2 mt-2 text-[11px] text-rose-700 mb-1"><strong>Tu solicitud anterior fue rechazada:</strong> ${escapeHtml(solicitud.motivoRespuesta || 'Sin motivo indicado.')}</div>`
                 : '';
-            return `${rechazoHtml}<button type="button" onclick="abrirSolicitudRecuperacionNPT(${numTrimestre},'${clave}','${escapeHtml(etiqueta).replace(/'/g,"\\'")}',${notaVal},'${fechaNota||''}')" class="w-full mt-2 bg-amber-500 text-white text-xs font-bold py-2 rounded-xl hover:bg-amber-600">Haz clic para que tu representante solicite recuperación académica de la nota obtenida${solicitud?.estado === 'rechazada' ? ' (reintentar)' : ''}</button>
-                <p class="text-[10px] text-amber-500 mt-1 text-center">Disponible hasta el ${escapeHtml(nptFormatoFecha(limite))}</p>
+            const textoBoton = esNoPresentada
+                ? 'Completar solicitud de recuperación por evaluación no presentada'
+                : 'Haz clic para que tu representante solicite recuperación académica de la nota obtenida';
+            const notaArg = notaVal === null ? 'null' : String(notaVal);
+            const fechaArg = String(fechaNota || fechaMaxima || '').replace(/'/g, "\\'");
+            const etiquetaArg = String(etiqueta || '').replace(/'/g, "\\'");
+            return `${rechazoHtml}<button type="button" onclick="abrirSolicitudRecuperacionNPT(${numTrimestre},'${clave}','${escapeHtml(etiquetaArg)}',${notaArg},'${fechaArg}',${esNoPresentada})" class="w-full mt-2 bg-amber-500 text-white text-xs font-bold py-2 rounded-xl hover:bg-amber-600">${textoBoton}${solicitud?.estado === 'rechazada' ? ' (reintentar)' : ''}</button>
+                <p class="text-[10px] text-amber-500 mt-1 text-center">Disponible hasta el ${escapeHtml(nptFormatoFechaHora(limite))}</p>
                 <p class="text-[10px] text-slate-400 mt-1 text-center">Si la nota de recuperación supera a la original, la nota efectiva es el promedio de ambas; si no la supera, se conserva la nota original (si el estudiante no tenía nota original, se aplica solo la de recuperación).</p>`;
         }
 
@@ -7616,11 +8001,12 @@ video {
         // simplemente recorre lo que el Worker haya devuelto para ESA evaluación en particular.
         // Componente compartido: se usa tanto en el modal del docente como en la vista del estudiante,
         // para que ambos vean exactamente el mismo informe (nunca dos versiones que se puedan desincronizar).
-        function renderInformeEvaluacionNPT(ia) {
+        function renderInformeEvaluacionNPT(ia, rubrica = '') {
             if (!ia) return '';
             const desglose = Array.isArray(ia.desglose) ? ia.desglose : [];
             const observaciones = Array.isArray(ia.observaciones) ? ia.observaciones : [];
-            const tieneFirmaInfo = ia.firmaDetectada === true || ia.firmaDetectada === false;
+            const tieneFirmaInfo = nptRubricaSolicitaFirma(rubrica) &&
+                (ia.firmaDetectada === true || ia.firmaDetectada === false);
             const advertenciasFuente = Array.isArray(ia.advertenciasFuente) ? ia.advertenciasFuente : [];
             const tieneAlgoQueMostrar = desglose.length > 0 || observaciones.length > 0 || tieneFirmaInfo ||
                 !!ia.advertenciaIntegridad || advertenciasFuente.length > 0 || !!ia.fuenteInfo;
@@ -7754,11 +8140,14 @@ video {
             // Ambos coexisten: registros creados antes de la migración a Drive/GitHub siguen
             // usando Base64 tal como siempre; los nuevos usan "url" y el Worker decide él mismo
             // (por el dominio del enlace) si es Drive, GitHub, o una página web genérica.
+            const verificarFirma = nptRubricaSolicitaFirma(rubrica);
+            const firmaPayload = verificarFirma && cfgFirmaDocente?.base64
+                ? { firmaDocenteBase64: cfgFirmaDocente.base64, firmaDocenteMime: cfgFirmaDocente.mime || 'image/png' }
+                : { firmaDocenteBase64: null, firmaDocenteMime: 'image/png' };
+
             const payload = arch.url
-                ? { rubrica, url: arch.url, tipo: tipoBase, estudiante: est.nombre,
-                    firmaDocenteBase64: cfgFirmaDocente?.base64 || null, firmaDocenteMime: cfgFirmaDocente?.mime || 'image/png' }
-                : { rubrica, archivoBase64: arch.base64, mime: arch.mime || 'application/pdf', tipo: tipoBase, estudiante: est.nombre,
-                    firmaDocenteBase64: cfgFirmaDocente?.base64 || null, firmaDocenteMime: cfgFirmaDocente?.mime || 'image/png' };
+                ? { rubrica, url: arch.url, tipo: tipoBase, estudiante: est.nombre, verificarFirma, ...firmaPayload }
+                : { rubrica, archivoBase64: arch.base64, mime: arch.mime || 'application/pdf', tipo: tipoBase, estudiante: est.nombre, verificarFirma, ...firmaPayload };
             if (!arch.url && !arch.base64) throw new Error('No se encontró el archivo subido por el estudiante.');
 
             // El fetch en sí (no la respuesta HTTP) puede fallar por una falla de red
@@ -7847,6 +8236,10 @@ video {
 
             const registro = {
                 nota: Math.round(numero(data.nota) * 100) / 100, comentario: texto(data.comentario), fecha: new Date().toISOString(),
+                // Conservamos una copia de la rúbrica que realmente se utilizó en esta evaluación.
+                // Así el estudiante puede consultar posteriormente la rúbrica aplicada, aunque el
+                // docente cambie la rúbrica publicada para futuras entregas.
+                rubricaAplicada: rubrica,
                 desglose, observaciones,
                 // null = no se pidió verificación de firma (no hay firma de referencia registrada)
                 firmaDetectada: (data.firmaDetectada === true || data.firmaDetectada === false) ? data.firmaDetectada : null,
@@ -8479,6 +8872,9 @@ video {
             const notaExistente = nptNotas[cedula]?.[`trimestre${trimestre}`]?.[tipo];
             const ia = nptEvaluacionesIA[cedula]?.[`trimestre${trimestre}`]?.[tipo];
             const arch = nptArchivos[cedula]?.[`trimestre${trimestre}`]?.[tipo];
+            const rubricaIA = estRef && tipoBase !== 'examen'
+                ? nptRubricaTexto(estRef.curso, estRef.paralelo, trimestre, tipo)
+                : '';
             const notaOriginalDeReferencia = esRec ? notaNPTDe(cedula, trimestre, tipoBase) : null;
             document.getElementById('npt-modal-info').innerHTML = `
                 <p><strong>Estudiante:</strong> ${escapeHtml(nombre)}</p>
@@ -8487,7 +8883,7 @@ video {
                 ${esRec ? `<p class="text-purple-600 text-xs">🔁 Esta nota se comparará con la original (${notaOriginalDeReferencia !== null ? formatearNota(notaOriginalDeReferencia) : 'aún no registrada'}): si la supera, la nota efectiva será el promedio de ambas; si no, se mantiene la original.</p>` : ''}
                 ${arch?.nombre ? `<p><strong>Archivo:</strong> ${escapeHtml(arch.nombre)}</p>` : ''}
                 ${ia ? `<p><strong>Evaluación IA:</strong> ${formatearNota(ia.nota)} — ${escapeHtml(ia.comentario||'')}</p>` : ''}
-                ${ia ? `<div class="mt-3">${renderInformeEvaluacionNPT(ia)}</div>` : ''}`;
+                ${ia ? `<div class="mt-3">${renderInformeEvaluacionNPT(ia, rubricaIA)}</div>` : ''}`;
             document.getElementById('npt-input-nota').value = notaExistente ? formatearNota(notaExistente.nota) : (ia ? formatearNota(ia.nota) : '');
             document.getElementById('npt-input-obs').value = notaExistente?.observacion || ia?.comentario || '';
             const chkVerificar = document.getElementById('npt-input-verificado');
@@ -8649,6 +9045,51 @@ video {
 
         function volverDesdesNPT() { mostrarPantalla('screen-npt'); renderTrimestresEstudiante(); }
 
+        // Resultado detallado de una evaluación tipo TEST para el estudiante.
+        // Después de calificar, el estudiante puede consultar la nota y el detalle de sus respuestas.
+        function nptResultadoTestHtml(reg, etiqueta, esRecuperacion = false) {
+            if (!reg) return '';
+            const nota = numero(reg.nota);
+            const correctas = Number.isFinite(Number(reg.correctas)) ? Number(reg.correctas) : 0;
+            const total = Number.isFinite(Number(reg.total)) ? Number(reg.total) : 0;
+            const fecha = reg.fecha || reg.horaFin || reg.horaInicio;
+            const filas = Array.isArray(reg.detalle) ? reg.detalle.map((d, i) => {
+                const correcta = d?.ok === true;
+                return `<div class="border border-slate-200 rounded-lg p-2.5 ${correcta ? 'bg-emerald-50' : 'bg-rose-50'}">
+                    <div class="flex items-start gap-2">
+                        <span class="font-black text-xs ${correcta ? 'text-emerald-700' : 'text-rose-700'}">${i + 1}.</span>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-bold text-slate-700">${escapeHtml(d?.pregunta || '')}</p>
+                            <p class="text-[11px] text-slate-600 mt-1"><strong>Tu respuesta:</strong> ${escapeHtml(d?.respuestaDada || 'Sin respuesta')}</p>
+                            <p class="text-[11px] text-slate-600"><strong>Respuesta correcta:</strong> ${escapeHtml(d?.correcta || '')}</p>
+                        </div>
+                        <span class="text-sm font-black flex-shrink-0">${correcta ? '✅' : '❌'}</span>
+                    </div>
+                </div>`;
+            }).join('') : '';
+            return `<details class="npt-detalle mt-2 text-left">
+                <summary class="flex items-center justify-between bg-white border border-slate-200 hover:bg-slate-50 rounded-lg px-3 py-2 text-xs font-bold text-slate-600 cursor-pointer">
+                    <span>📊 Ver resultado de ${escapeHtml(esRecuperacion ? 'la recuperación' : 'la evaluación')}</span>
+                    <span class="npt-caret text-slate-400">▾</span>
+                </summary>
+                <div class="mt-2 space-y-2">
+                    <div class="bg-white border border-slate-200 rounded-lg p-3">
+                        <div class="flex items-center justify-between gap-3 flex-wrap">
+                            <div>
+                                <p class="text-xs font-black text-slate-700">${escapeHtml(etiqueta)}${esRecuperacion ? ' — Recuperación' : ''}</p>
+                                <p class="text-[10px] text-slate-400 mt-0.5">${fecha ? escapeHtml(nptFormatoFechaHora(fecha)) : 'Fecha no registrada'}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xl font-black ${nota >= 7 ? 'text-emerald-600' : 'text-rose-600'}">${formatearNota(nota)} / 10</span>
+                                <p class="text-[10px] text-slate-400">${correctas}/${total} correctas</p>
+                            </div>
+                        </div>
+                    </div>
+                    ${filas ? `<div class="space-y-2">${filas}</div>` : '<p class="text-[11px] text-slate-400">El detalle de preguntas no está disponible para este registro histórico.</p>'}
+                </div>
+            </details>`;
+        }
+
         function renderTrimestresEstudiante() {
             const cont = document.getElementById('npt-trimestres-container');
             if (!cont || !estudianteActual) return;
@@ -8657,6 +9098,7 @@ video {
 
             cont.innerHTML = trimestresEfectivos().map(t => {
                 const habEstudiante = nptEstudianteHabilitado(curso, paralelo, t.num, cedula);
+                const trimestreCerrado = nptTrimestreCerrado(curso, paralelo, t.num);
 
                 const bloquesTipo = nptInsumosActivosNPT(curso, paralelo, t.num).map(tp => {
                     const etiquetaTipo = tp.label.replace(/^[^ ]+ /, '');
@@ -8675,8 +9117,10 @@ video {
                             estadoTestHtml = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
                                 <p class="text-xs text-slate-500 font-bold mb-1">${escapeHtml(etiquetaTipo)} rendido</p>
                                 <span class="text-2xl font-black ${notaTestVal >= 7 ? 'text-emerald-600' : 'text-rose-600'}">${formatearNota(notaTestVal)} <span class="text-sm text-slate-400 font-normal">/ 10</span></span>
-                                <p class="text-[10px] text-slate-400 mt-1">${notaTest.correctas}/${notaTest.total} correctas · verificado y registrado en el sistema</p>
+                                <p class="text-[10px] text-slate-400 mt-1">${notaTest.correctas}/${notaTest.total} correctas · resultado registrado en el sistema</p>
+                                ${nptResultadoTestHtml(notaTest, etiquetaTipo, false)}
                             </div>
+                            ${nptEvidenciaRubricaAplicadaHtml(cedula, curso, paralelo, t.num, tp.id, null, null, etiquetaTipo, {testAplicado:true})}
                             ${nptBloqueSolicitudRecuperacionHtml(cedula, curso, paralelo, t.num, tp.id, notaTestVal, notaTest.fecha || notaTest.fechaNota, etiquetaTipo)}`;
                         } else if (puedeRendir) {
                             estadoTestHtml = `<button onclick="comenzarInsumoTestNPT(${t.num},'${tp.id}')" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-700">🧪 Rendir ${escapeHtml(etiquetaTipo)}</button>
@@ -8684,7 +9128,12 @@ video {
                         } else if (!insumoHabTest || !insumoHabEstudianteTest) {
                             estadoTestHtml = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center text-xs text-slate-500">El docente aún no ha habilitado este insumo.</div>`;
                         } else if (vencidoTest) {
-                            estadoTestHtml = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center text-xs text-rose-600">⏰ El plazo venció el ${escapeHtml(formatearFechaMaxima(fechaMaxTest))}.</div>`;
+                            const solicitudVencidaTest = nptSolicitudRecuperacionDe(cedula, t.num, tp.id);
+                            const finSolicitudTest = nptFinSolicitudPorActivacion(curso, paralelo, t.num, tp.id);
+                            const ventanaActivaTest = !trimestreCerrado && !!finSolicitudTest && Date.now() < finSolicitudTest.getTime();
+                            const puedeSolicitarTest = !solicitudVencidaTest && ventanaActivaTest && !nptRecuperacionYaHabilitadaParaSolicitud(curso, paralelo, t.num, tp.id, cedula);
+                            estadoTestHtml = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center text-xs text-rose-600">⏰ El plazo venció el ${escapeHtml(formatearFechaMaxima(fechaMaxTest))}.<br><span class="text-[11px]">${ventanaActivaTest ? 'Se activó el proceso de solicitud de recuperación por no presentarlo a tiempo.' : (trimestreCerrado ? 'La recuperación no está disponible porque el trimestre está cerrado.' : 'El plazo para solicitar recuperación ya venció.')}</span></div>
+                                ${puedeSolicitarTest ? `<button type="button" onclick="abrirSolicitudRecuperacionNPT(${t.num},${escapeHtml(JSON.stringify(tp.id))},${escapeHtml(JSON.stringify(etiquetaTipo))},null,${escapeHtml(JSON.stringify(fechaMaxTest || ''))},true)" class="w-full mt-2 bg-amber-500 text-white text-xs font-bold py-2 rounded-xl hover:bg-amber-600">📩 Completar solicitud de recuperación</button>` : ''}`;
                         } else {
                             estadoTestHtml = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center text-xs text-slate-500">No disponible por ahora.</div>`;
                         }
@@ -8692,7 +9141,7 @@ video {
                         // ---- Recuperación de este insumo tipo Test (banco de preguntas independiente) ----
                         const claveRecTest = nptClaveRecuperacionInsumo(tp.id);
                         const notaRecTest = nptNotas[cedula]?.[`trimestre${t.num}`]?.[claveRecTest] || null;
-                        const recHabTest = nptInsumoRecuperacionEstudianteHabilitado(curso, paralelo, t.num, tp.id, cedula);
+                        const recHabTest = !trimestreCerrado && nptInsumoRecuperacionEstudianteHabilitado(curso, paralelo, t.num, tp.id, cedula);
                         let recuperacionTestHtml = '';
                         if (notaRecTest) {
                             const notaRecTestVal = numero(notaRecTest.nota);
@@ -8703,7 +9152,8 @@ video {
                                 <p class="text-xs text-slate-500 font-bold mb-1">🔁 Recuperación de ${escapeHtml(etiquetaTipo)} rendida</p>
                                 <span class="text-xl font-black ${notaEfectivaTest >= 7 ? 'text-emerald-600' : 'text-rose-600'}">${formatearNota(notaEfectivaTest)} <span class="text-sm text-slate-400 font-normal">/ 10</span></span>
                                 <p class="text-[10px] text-purple-600 font-bold mt-0.5">${notaOriginalTestVal !== null ? (seMantieneOriginalTest ? `Se mantiene tu nota original de ${formatearNota(notaOriginalTestVal)}: fue mayor a la recuperación` : `Promedio: original ${formatearNota(notaOriginalTestVal)} + recuperación ${formatearNota(notaRecTestVal)}`) : 'Sin nota original: se tomó solo la recuperación'}</p>
-                                <p class="text-[10px] text-slate-400 mt-1">${notaRecTest.correctas}/${notaRecTest.total} correctas · verificado y registrado en el sistema</p>
+                                <p class="text-[10px] text-slate-400 mt-1">${notaRecTest.correctas}/${notaRecTest.total} correctas · resultado registrado en el sistema</p>
+                                ${nptResultadoTestHtml(notaRecTest, etiquetaTipo, true)}
                             </div>`;
                         } else if (recHabTest) {
                             recuperacionTestHtml = `<div class="bg-purple-50 border border-purple-200 rounded-xl p-3 mt-2 text-center">
@@ -8744,7 +9194,7 @@ video {
                         ? `<div class="bg-amber-50 border border-amber-300 rounded-xl p-3 mb-2 text-xs text-amber-800">
                             <p class="font-bold">📨 El docente eliminó tu entrega para que la vuelvas a subir:</p>
                             <p class="italic mt-1">"${escapeHtml(observacionDev.motivo||'')}"</p>
-                            <p class="text-[10px] text-amber-600 mt-1">${escapeHtml(observacionDev.docente||'')} · ${escapeHtml(observacionDev.fecha||'')}</p>
+                            <p class="text-[10px] text-amber-600 mt-1">${escapeHtml(observacionDev.docente||'')} · ${escapeHtml(nptFormatoFechaHora(observacionDev.fecha))}</p>
                         </div>`
                         : '';
 
@@ -8780,21 +9230,30 @@ video {
                                     <div class="mt-2">${renderInformeEvaluacionNPT(ia)}</div>
                                 </details>` : ''}
                             </div>
+                            ${nptEvidenciaRubricaAplicadaHtml(cedula, curso, paralelo, t.num, tp.id, arch, ia, etiquetaTipo)}
                             ${nptBloqueSolicitudRecuperacionHtml(cedula, curso, paralelo, t.num, tp.id, notaVal, nota.fecha || nota.fechaNota, etiquetaTipo)}`;
                         } else if (ia) {
                             estadoHtml += `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-2 text-xs text-amber-700">
                                 ⏳ Evaluado automáticamente (${formatearNota(numero(ia.nota))}/10) — pendiente de verificación por el docente. El reporte se podrá imprimir cuando el docente confirme la nota.
                                 ${ia.sinEvidencia ? '<br><span class="font-semibold">La IA no encontró evidencia evaluable en el enlace y aplicó la rúbrica como entrega sin evidencia.</span>' : ''}
-                            </div>`;
+                            </div>
+                            ${nptEvidenciaRubricaAplicadaHtml(cedula, curso, paralelo, t.num, tp.id, arch, ia, etiquetaTipo)}`;
                         } else {
                             estadoHtml += `<div class="text-xs text-slate-400 mb-2">📊 Pendiente de revisión por el docente.</div>`;
                         }
                     } else if (vencido && insumoHab && insumoHabEstudiante) {
-                        // La fecha máxima ya pasó: el estudiante ya no puede subir este insumo
+                        // La fecha máxima ya pasó: la solicitud solo permanece disponible hasta 7 días
+                        // después del vencimiento de la evaluación.
+                        const solicitudVencida = nptSolicitudRecuperacionDe(cedula, t.num, tp.id);
+                        const finSolicitud = nptFinSolicitudPorActivacion(curso, paralelo, t.num, tp.id);
+                        const ventanaActiva = !trimestreCerrado && !!finSolicitud && Date.now() < finSolicitud.getTime();
+                        const puedeSolicitarAutomaticamente = !solicitudVencida && ventanaActiva && !nptRecuperacionYaHabilitadaParaSolicitud(curso, paralelo, t.num, tp.id, cedula);
                         estadoHtml = `<div class="bg-rose-50 border border-rose-200 rounded-xl p-3 mb-2 text-center text-xs text-rose-700">
                             ⏰ Fecha máxima de entrega vencida el ${escapeHtml(formatearFechaMaxima(fechaMax))}.<br>
-                            <span class="text-[11px] text-rose-500">Solicita al docente la reapertura si corresponde.</span>
-                        </div>`;
+                            <span class="text-[11px] text-rose-500">${solicitudVencida?.estado === 'pendiente' ? 'La solicitud de recuperación está pendiente de revisión.' : (ventanaActiva ? 'Se activó el proceso de solicitud de recuperación por no presentar la evaluación a tiempo.' : 'El plazo para solicitar recuperación ya venció.')}</span>
+                            ${puedeSolicitarAutomaticamente ? `<button type="button" onclick="abrirSolicitudRecuperacionNPT(${t.num},${escapeHtml(JSON.stringify(tp.id))},${escapeHtml(JSON.stringify(etiquetaTipo))},null,${escapeHtml(JSON.stringify(fechaMax || ''))},true)" class="w-full mt-2 bg-amber-500 text-white text-xs font-bold py-2 rounded-xl hover:bg-amber-600">📩 Completar solicitud de recuperación</button>` : ''}
+                        </div>
+                        ${!solicitudVencida && !ventanaActiva ? nptBloqueSolicitudExpiradaHtml(curso, paralelo, t.num, tp.id) : ''}`;
                     } else if (!insumoHab) {
                         estadoHtml = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-2 text-center text-xs text-slate-500">🔴 Este insumo no está habilitado por el docente.</div>`;
                     } else if (!insumoHabEstudiante) {
@@ -8858,7 +9317,7 @@ video {
                         ? `<div class="bg-amber-50 border border-amber-300 rounded-xl p-3 mb-2 text-xs text-amber-800">
                             <p class="font-bold">📨 El docente eliminó tu recuperación para que la vuelvas a subir:</p>
                             <p class="italic mt-1">"${escapeHtml(observacionDevRec.motivo||'')}"</p>
-                            <p class="text-[10px] text-amber-600 mt-1">${escapeHtml(observacionDevRec.docente||'')} · ${escapeHtml(observacionDevRec.fecha||'')}</p>
+                            <p class="text-[10px] text-amber-600 mt-1">${escapeHtml(observacionDevRec.docente||'')} · ${escapeHtml(nptFormatoFechaHora(observacionDevRec.fecha))}</p>
                         </div>`
                         : '';
                     let recuperacionHtml = '';
@@ -8924,12 +9383,19 @@ video {
                         <p class="text-sm font-black text-slate-700">${escapeHtml(mensajeCualitativoExamen(numero(notaExamen.nota)))}</p>
                         <p class="text-[10px] text-slate-400 mt-1">Tu docente tiene el detalle completo de tu examen.</p>
                     </div>
+                    ${nptEvidenciaRubricaAplicadaHtml(cedula, curso, paralelo, t.num, 'examen', nptArchivos[cedula]?.[`trimestre${t.num}`]?.examen || null, null, '📝 Examen Trimestral', {examenAplicado:true})}
                     ${nptBloqueSolicitudRecuperacionHtml(cedula, curso, paralelo, t.num, 'examen', numero(notaExamen.nota), notaExamen.fecha || notaExamen.fechaNota, '📝 Examen Trimestral')}`;
                 } else if (examenHab) {
                     examenHtml = `<button onclick="comenzarExamenTrimestre(${t.num})" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-700">📝 Realizar examen del trimestre</button>
                     ${examenFechaMax ? `<p class="text-[10px] text-amber-600 mt-1 text-center">⏳ Cierra el ${escapeHtml(formatearFechaMaxima(examenFechaMax))}</p>` : ''}`;
                 } else if (examenHabGeneral && examenHabEstudiante && examenVencido) {
-                    examenHtml = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center text-xs text-rose-600">⏰ El plazo para rendir el examen venció el ${escapeHtml(formatearFechaMaxima(examenFechaMax))}.</div>`;
+                    const solicitudExamenVencida = nptSolicitudRecuperacionDe(cedula, t.num, 'examen');
+                    const finSolicitudExamen = nptFinSolicitudPorActivacion(curso, paralelo, t.num, 'examen');
+                    const ventanaActivaExamen = !trimestreCerrado && !!finSolicitudExamen && Date.now() < finSolicitudExamen.getTime();
+                    const puedeSolicitarExamen = !solicitudExamenVencida && ventanaActivaExamen && !nptRecuperacionYaHabilitadaParaSolicitud(curso, paralelo, t.num, 'examen', cedula);
+                    examenHtml = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center text-xs text-rose-600">⏰ El plazo para rendir el examen venció el ${escapeHtml(formatearFechaMaxima(examenFechaMax))}.<br><span class="text-[11px]">${ventanaActivaExamen ? 'Se activó el proceso de solicitud de recuperación por no presentarlo a tiempo.' : (trimestreCerrado ? 'La recuperación no está disponible porque el trimestre está cerrado.' : 'El plazo para solicitar recuperación ya venció.')}</span></div>
+                        ${puedeSolicitarExamen ? `<button type="button" onclick="abrirSolicitudRecuperacionNPT(${t.num},'examen','📝 Examen Trimestral',null,${escapeHtml(JSON.stringify(examenFechaMax || ''))},true)" class="w-full mt-2 bg-amber-500 text-white text-xs font-bold py-2 rounded-xl hover:bg-amber-600">📩 Completar solicitud de recuperación</button>` : ''}
+                        ${!solicitudExamenVencida && !ventanaActivaExamen ? nptBloqueSolicitudExpiradaHtml(curso, paralelo, t.num, 'examen') : ''}`;
                 } else {
                     examenHtml = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center text-xs text-slate-500">El examen trimestral será habilitado en la fecha correspondiente.</div>`;
                 }
@@ -8937,7 +9403,7 @@ video {
                 // ---- Bloque de examen de RECUPERACIÓN (solo visible si aplica a este estudiante) ----
                 const examenRecHabGeneral = nptExamenRecuperacionHabilitado(curso, paralelo, t.num);
                 const examenRecHabEstudiante = nptExamenRecuperacionEstudianteHabilitado(curso, paralelo, t.num, cedula);
-                const examenRecHab = examenRecHabGeneral && examenRecHabEstudiante;
+                const examenRecHab = !trimestreCerrado && examenRecHabGeneral && examenRecHabEstudiante;
                 const notaExamenRecuperacion = nptNotas[cedula]?.[`trimestre${t.num}`]?.examenRecuperacion || null;
                 let examenRecHtml = '';
                 if (notaExamenRecuperacion) {
@@ -8970,6 +9436,7 @@ video {
                 </div>`;
             }).join('');
             renderResultadoAnualEstudiante();
+            nptRegistrarExpiracionesSolicitud().finally(() => nptActivarSolicitudRecuperacionVencida());
         }
 
         // ==================== Resultado Anual y Examen Supletorio (vista del estudiante) ====================
@@ -9311,11 +9778,12 @@ video {
             if(filtradas.length === 0) { document.getElementById('no-calif-alert')?.classList.remove('hidden'); return; }
             document.getElementById('no-calif-alert')?.classList.add('hidden');
             filtradas.forEach((c,i) => {
-                tbody.insertRow().innerHTML = `<tr><td class="p-3">${i+1}</td><td>${escapeHtml(c.nombre)}</td><td>${escapeHtml(c.cedula)}</td><td>${escapeHtml(c.curso || cursoActual || '-')}</td><td>${escapeHtml(c.fecha)}</td><td class="text-center">${numero(c.correctas)}/10</td><td class="text-right font-bold">${formatearNota(c.nota)}</td></tr>`;
+                tbody.insertRow().innerHTML = `<tr><td class="p-3">${i+1}</td><td>${escapeHtml(c.nombre)}</td><td>${escapeHtml(c.cedula)}</td><td>${escapeHtml(c.curso || cursoActual || '-')}</td><td>${escapeHtml(nptFormatoFecha(c.fecha))}</td><td class="text-center">${numero(c.correctas)}/10</td><td class="text-right font-bold">${formatearNota(c.nota)}</td></tr>`;
             });
         }
         function fechaArchivo() {
-            return new Date().toISOString().slice(0, 10);
+            const f = new Date();
+            return `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,'0')}-${String(f.getDate()).padStart(2,'0')}`;
         }
         // Devuelve cuántas veces ha ingresado el estudiante HOY (según contador diario)
         function accesosHoyEstudiante(cedula) {
@@ -9470,7 +9938,7 @@ video {
             for(let [g, lista] of Object.entries(grupos)) {
                 html += `<h2>${escapeHtml(g)} (${lista.length})</h2><table><tr><th class="col-num">#</th><th class="col-nombre">Estudiante</th><th class="col-fecha">Fecha</th><th class="col-nota right">Nota</th></tr>`;
                 lista.forEach((c,i) => {
-                    html += `<tr><td class="center">${i+1}</td><td>${escapeHtml(c.nombre)}</td><td>${escapeHtml(c.fecha)}</td><td class="right"><strong>${formatearNota(c.nota)}</strong></td></tr>`;
+                    html += `<tr><td class="center">${i+1}</td><td>${escapeHtml(c.nombre)}</td><td>${escapeHtml(nptFormatoFecha(c.fecha))}</td><td class="right"><strong>${formatearNota(c.nota)}</strong></td></tr>`;
                 });
                 html += `</table>`;
             }
@@ -9732,20 +10200,55 @@ video {
             actualizarVistasContadores();
             renderFirmaDocentePreview();
         }
-        // Incrementa el contador de acceso del estudiante (general + individual histórico + individual diario)
+        // Incrementa el contador de acceso del estudiante (general + individual histórico + individual diario).
+        // Usa transacciones de Firebase SDK para evitar que dos ingresos concurrentes sobrescriban
+        // el mismo valor. En REST se realiza lectura + escritura y se confirma el valor resultante.
         async function registrarAccesoEstudiante(cedula) {
             const authOk = await ensureAuth();
             const hoy = fechaArchivo();
-            cntAccesosEstudiantes = (cntAccesosEstudiantes || 0) + 1;
-            cntAccesosEstudiantesIndividuales[cedula] = (cntAccesosEstudiantesIndividuales[cedula] || 0) + 1;
-            if (!cntAccesosEstudiantesDiario[cedula]) cntAccesosEstudiantesDiario[cedula] = {};
-            cntAccesosEstudiantesDiario[cedula][hoy] = (cntAccesosEstudiantesDiario[cedula][hoy] || 0) + 1;
-            if (authOk) {
-                try {
-                    await guardarValorFirebase('configuracion/contadores/accesosEstudiantes', cntAccesosEstudiantes);
-                    await guardarValorFirebase(`contadoresEstudiantesIndividuales/${cedula}`, cntAccesosEstudiantesIndividuales[cedula]);
-                    await guardarValorFirebase(`contadoresEstudiantesDiario/${cedula}/${hoy}`, cntAccesosEstudiantesDiario[cedula][hoy]);
-                } catch(e) { console.warn('No se pudo registrar acceso de estudiante:', e.message); }
+            if (!authOk) {
+                cntAccesosEstudiantes = (cntAccesosEstudiantes || 0) + 1;
+                cntAccesosEstudiantesIndividuales[cedula] = (cntAccesosEstudiantesIndividuales[cedula] || 0) + 1;
+                if (!cntAccesosEstudiantesDiario[cedula]) cntAccesosEstudiantesDiario[cedula] = {};
+                cntAccesosEstudiantesDiario[cedula][hoy] = (cntAccesosEstudiantesDiario[cedula][hoy] || 0) + 1;
+                actualizarVistasContadores();
+                return;
+            }
+            try {
+                if (database) {
+                    const totalRef = database.ref('configuracion/contadores/accesosEstudiantes');
+                    const indRef = database.ref(`contadoresEstudiantesIndividuales/${cedula}`);
+                    const diaRef = database.ref(`contadoresEstudiantesDiario/${cedula}/${hoy}`);
+                    const [totalSnap, indSnap, diaSnap] = await Promise.all([
+                        totalRef.transaction(v => (Number(v) || 0) + 1),
+                        indRef.transaction(v => (Number(v) || 0) + 1),
+                        diaRef.transaction(v => (Number(v) || 0) + 1)
+                    ]);
+                    cntAccesosEstudiantes = Number(totalSnap.snapshot.val()) || 0;
+                    cntAccesosEstudiantesIndividuales[cedula] = Number(indSnap.snapshot.val()) || 0;
+                    if (!cntAccesosEstudiantesDiario[cedula]) cntAccesosEstudiantesDiario[cedula] = {};
+                    cntAccesosEstudiantesDiario[cedula][hoy] = Number(diaSnap.snapshot.val()) || 0;
+                } else {
+                    const [totalActual, indActual, diaActual] = await Promise.all([
+                        leerValorRutaFirebase('configuracion/contadores/accesosEstudiantes'),
+                        leerValorRutaFirebase(`contadoresEstudiantesIndividuales/${cedula}`),
+                        leerValorRutaFirebase(`contadoresEstudiantesDiario/${cedula}/${hoy}`)
+                    ]);
+                    const total = (Number(totalActual) || 0) + 1;
+                    const individual = (Number(indActual) || 0) + 1;
+                    const diario = (Number(diaActual) || 0) + 1;
+                    await Promise.all([
+                        guardarValorFirebase('configuracion/contadores/accesosEstudiantes', total),
+                        guardarValorFirebase(`contadoresEstudiantesIndividuales/${cedula}`, individual),
+                        guardarValorFirebase(`contadoresEstudiantesDiario/${cedula}/${hoy}`, diario)
+                    ]);
+                    cntAccesosEstudiantes = total;
+                    cntAccesosEstudiantesIndividuales[cedula] = individual;
+                    if (!cntAccesosEstudiantesDiario[cedula]) cntAccesosEstudiantesDiario[cedula] = {};
+                    cntAccesosEstudiantesDiario[cedula][hoy] = diario;
+                }
+            } catch(e) {
+                console.warn('No se pudo registrar acceso de estudiante:', e.message);
             }
             actualizarVistasContadores();
         }
@@ -10113,7 +10616,7 @@ video {
                 cfgFirmaDocente = registro;
                 input.value = '';
                 renderFirmaDocentePreview();
-                alert('✅ Firma de referencia guardada. Se usará automáticamente en las próximas evaluaciones con IA de Cuaderno y Libro.');
+                alert('✅ Firma de referencia guardada. Solo se usará cuando la rúbrica de la evaluación indique que debe verificarse una firma.');
             } catch(e) {
                 console.error(e);
                 alert('Error al procesar la imagen: ' + e.message);
