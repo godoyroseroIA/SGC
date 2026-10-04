@@ -2031,7 +2031,183 @@ video {
         /* p-1.5 ya se usaba en el código (tablas de la evaluación IA) pero nunca quedó
            compilado en la hoja Tailwind estática: quedaba sin padding real. Se corrige aquí. */
         .p-1\.5 { padding: .375rem; }
+
+        /* ================= Ventanas flotantes SGC =================
+           No modales: se arrastran desde el encabezado, se redimensionan desde la esquina inferior derecha,
+           se maximizan y se cierran (✕ / Esc). El Tailwind del archivo es estático, por eso este CSS es propio. */
+        .sgc-fw { position: fixed; z-index: 2000; display: flex; flex-direction: column; box-sizing: border-box;
+            background: #fff; color: #1e293b; border: 1px solid #e2e8f0; border-radius: 16px;
+            box-shadow: 0 28px 70px -14px rgba(15,23,42,.38), 0 6px 18px rgba(15,23,42,.14);
+            min-width: 340px; min-height: 300px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px);
+            overflow: hidden; resize: both; font-family: inherit; animation: sgcFwIn .18s ease-out; }
+        .sgc-fw.hidden { display: none; }
+        .sgc-fw:focus { outline: none; }
+        .sgc-fw.sgc-fw-arrastrando { user-select: none; box-shadow: 0 38px 90px -12px rgba(15,23,42,.5), 0 8px 22px rgba(15,23,42,.18); }
+        .sgc-fw.sgc-fw-max { left: 8px !important; top: 8px !important; right: 8px !important; bottom: 8px !important;
+            width: auto !important; height: auto !important; max-width: none; max-height: none; resize: none; border-radius: 12px; }
+        @keyframes sgcFwIn { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+        @media (prefers-reduced-motion: reduce) { .sgc-fw { animation: none; } .sgc-toast { transition: none; } }
+        @media (max-width: 640px) {
+            .sgc-fw, .sgc-fw.sgc-fw-max { left: 0 !important; top: 0 !important; right: 0 !important; bottom: 0 !important;
+                width: auto !important; height: auto !important; max-width: none; max-height: none; min-width: 0;
+                border-radius: 0; resize: none; }
+            .sgc-fw [data-fw-act="max"] { display: none; }
+            .sgc-fw-head { cursor: default; }
+            .sgc-fw-grip { display: none; }
+        }
+        .sgc-fw-head { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 14px; flex-shrink: 0;
+            background: linear-gradient(180deg, #fff, #f8fafc); border-bottom: 1px solid #e2e8f0;
+            cursor: grab; user-select: none; touch-action: none; }
+        .sgc-fw-arrastrando .sgc-fw-head { cursor: grabbing; }
+        .sgc-fw-grip { color: #94a3b8; font-size: 14px; line-height: 1; letter-spacing: -3px; }
+        .sgc-fw-title { margin: 0; font-size: 15px; font-weight: 800; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sgc-fw-sub { font-size: 11px; font-weight: 600; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        .sgc-fw-actions { margin-left: auto; display: flex; gap: 2px; flex-shrink: 0; }
+        .sgc-fw-btn { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; padding: 0;
+            border: 0; border-radius: 8px; background: transparent; color: #64748b; cursor: pointer; transition: background .12s, color .12s; }
+        .sgc-fw-btn:hover { background: #e2e8f0; color: #0f172a; }
+        .sgc-fw-btn.sgc-fw-close:hover { background: #fee2e2; color: #be123c; }
+        .sgc-fw-btn svg { width: 16px; height: 16px; display: block; pointer-events: none; }
+        .sgc-fw-btn .sgc-ic-restore { display: none; }
+        .sgc-fw-max .sgc-fw-btn .sgc-ic-restore { display: block; }
+        .sgc-fw-max .sgc-fw-btn .sgc-ic-max { display: none; }
+        .sgc-fw :focus-visible { outline: 2px solid #4f46e5; outline-offset: 2px; }
+        .sgc-fw-body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; background: #f8fafc; }
+        .sgc-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+        /* --- pestañas, barra de herramientas, acciones masivas --- */
+        .sgc-tabs { display: flex; gap: 4px; flex-wrap: wrap; padding: 10px 14px 0; background: #fff; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
+        .sgc-tab { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; margin-bottom: -1px; border: 0;
+            border-bottom: 3px solid transparent; border-radius: 8px 8px 0 0; background: transparent; cursor: pointer;
+            font: inherit; font-size: 12px; font-weight: 700; color: #64748b; }
+        .sgc-tab:hover { background: #f1f5f9; color: #0f172a; }
+        .sgc-tab[aria-selected="true"] { color: #4338ca; border-bottom-color: #4f46e5; background: #eef2ff; }
+        .sgc-tab-n { min-width: 20px; padding: 1px 6px; border-radius: 999px; background: #e2e8f0; color: #334155; font-size: 10px; font-weight: 800; text-align: center; }
+        .sgc-tab[aria-selected="true"] .sgc-tab-n { background: #4f46e5; color: #fff; }
+        .sgc-tab-n.sgc-n-alerta { background: #f59e0b; color: #fff; }
+        .sgc-toolbar { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 14px; background: #fff; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
+        .sgc-input { box-sizing: border-box; height: 34px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff;
+            font: inherit; font-size: 12px; color: #0f172a; min-width: 0; }
+        .sgc-input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.2); }
+        .sgc-grow { flex: 1 1 220px; }
+        .sgc-bulk { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 14px; background: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #475569; flex-shrink: 0; }
+        .sgc-bulk label { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; cursor: pointer; }
+        .sgc-bulk input[type="checkbox"], .sgc-card input[type="checkbox"] { width: 16px; height: 16px; accent-color: #4f46e5; cursor: pointer; }
+        .sgc-sp { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+
+        /* --- botones --- */
+        .sgc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 12px;
+            border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; color: #334155; font: inherit; font-size: 12px; font-weight: 700;
+            cursor: pointer; white-space: nowrap; transition: background .12s, border-color .12s, transform .05s; }
+        .sgc-btn:hover:not(:disabled) { background: #f1f5f9; }
+        .sgc-btn:active:not(:disabled) { transform: translateY(1px); }
+        .sgc-btn:disabled { opacity: .45; cursor: not-allowed; }
+        .sgc-btn-sm { height: 28px; padding: 0 10px; font-size: 11px; border-radius: 8px; }
+        .sgc-btn-ok { background: #059669; border-color: #059669; color: #fff; }
+        .sgc-btn-ok:hover:not(:disabled) { background: #047857; }
+        .sgc-btn-danger { background: #e11d48; border-color: #e11d48; color: #fff; }
+        .sgc-btn-danger:hover:not(:disabled) { background: #be123c; }
+        .sgc-btn-soft-danger { background: #fff1f2; border-color: #fecdd3; color: #be123c; }
+        .sgc-btn-soft-danger:hover:not(:disabled) { background: #ffe4e6; }
+        .sgc-btn-primary { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+        .sgc-btn-primary:hover:not(:disabled) { background: #4338ca; }
+        .sgc-btn-dark { background: #1e293b; border-color: #1e293b; color: #fff; }
+        .sgc-btn-dark:hover:not(:disabled) { background: #0f172a; }
+
+        /* --- tarjetas de solicitudes --- */
+        .sgc-lista { padding: 12px 14px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 10px; align-content: start; }
+        .sgc-card { background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid #94a3b8; border-radius: 12px; padding: 12px;
+            display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 2px rgba(15,23,42,.04); transition: box-shadow .12s; }
+        .sgc-card:hover { box-shadow: 0 6px 16px rgba(15,23,42,.08); }
+        .sgc-card[data-estado="pendiente"] { border-left-color: #f59e0b; background: #fffdf7; }
+        .sgc-card[data-estado="aprobada"] { border-left-color: #10b981; }
+        .sgc-card[data-estado="rechazada"] { border-left-color: #f43f5e; }
+        .sgc-card.sgc-sel { outline: 2px solid #6366f1; outline-offset: -2px; }
+        .sgc-card-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .sgc-avatar { flex: 0 0 36px; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            background: #e0e7ff; color: #3730a3; font-size: 12px; font-weight: 800; }
+        .sgc-card-id { min-width: 0; flex: 1; }
+        .sgc-card-nombre { margin: 0; font-size: 13px; font-weight: 800; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sgc-card-ced { margin: 0; font-size: 11px; color: #64748b; }
+        .sgc-badge { flex-shrink: 0; padding: 3px 9px; border-radius: 999px; font-size: 10px; font-weight: 800; border: 1px solid transparent; }
+        .sgc-badge-pendiente { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+        .sgc-badge-aprobada { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+        .sgc-badge-rechazada { background: #ffe4e6; color: #9f1239; border-color: #fecdd3; }
+        .sgc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .sgc-chip { padding: 2px 8px; border-radius: 999px; background: #f1f5f9; color: #475569; font-size: 10px; font-weight: 700; }
+        .sgc-chip-warn { background: #fef3c7; color: #92400e; }
+        .sgc-motivo { margin: 0; padding: 8px 10px; background: #f8fafc; border-left: 3px solid #cbd5e1; border-radius: 6px;
+            font-size: 12px; font-style: italic; color: #475569; overflow-wrap: anywhere;
+            display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        .sgc-motivo.sgc-expandido { display: block; -webkit-line-clamp: unset; }
+        .sgc-link { align-self: flex-start; padding: 0; border: 0; background: none; font: inherit; font-size: 11px; font-weight: 700;
+            color: #4f46e5; text-decoration: underline; cursor: pointer; }
+        .sgc-meta { margin: 0; font-size: 10px; color: #94a3b8; line-height: 1.5; }
+        .sgc-rechazo { margin: 0; padding: 6px 8px; border: 1px solid #fecdd3; border-radius: 8px; background: #fff1f2; color: #be123c; font-size: 11px; }
+        .sgc-acciones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 2px; }
+        .sgc-vacio { grid-column: 1 / -1; text-align: center; padding: 44px 16px; color: #64748b; font-size: 13px; }
+        .sgc-vacio b { display: block; margin-bottom: 4px; font-size: 15px; color: #334155; }
+        .sgc-vacio .sgc-btn { margin-top: 12px; }
+
+        /* --- diálogo interno y aviso (dentro de la ventana) --- */
+        .sgc-dlg-layer { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 16px;
+            background: rgba(15,23,42,.45); backdrop-filter: blur(2px); }
+        .sgc-dlg-layer.hidden { display: none; }
+        .sgc-dlg { width: 100%; max-width: 440px; max-height: 100%; overflow-y: auto; padding: 18px; border-radius: 14px; background: #fff;
+            box-shadow: 0 20px 50px rgba(15,23,42,.35); }
+        .sgc-dlg h4 { margin: 0 0 6px; font-size: 15px; font-weight: 800; color: #0f172a; }
+        .sgc-dlg p { margin: 0 0 10px; font-size: 13px; color: #475569; line-height: 1.5; }
+        .sgc-dlg textarea { width: 100%; box-sizing: border-box; min-height: 84px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 10px;
+            font: inherit; font-size: 12px; resize: vertical; }
+        .sgc-dlg textarea:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.2); }
+        .sgc-dlg .sgc-dlg-err { margin: 4px 0 0; min-height: 14px; font-size: 11px; color: #be123c; }
+        .sgc-dlg-pie { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+        .sgc-aviso { margin: 0 0 10px; padding: 8px 10px; border: 1px solid #fde68a; border-radius: 8px; background: #fffbeb; color: #92400e; font-size: 12px; line-height: 1.45; }
+        .sgc-toast { position: absolute; left: 50%; bottom: 14px; z-index: 30; max-width: calc(100% - 28px); padding: 9px 14px; border-radius: 10px;
+            background: #0f172a; color: #fff; font-size: 12px; font-weight: 600; box-shadow: 0 10px 24px rgba(15,23,42,.3);
+            opacity: 0; transform: translate(-50%, 12px); pointer-events: none; transition: opacity .18s, transform .18s; }
+        .sgc-toast.sgc-toast-on { opacity: 1; transform: translate(-50%, 0); }
+        .sgc-toast[data-tipo="ok"] { background: #047857; }
+        .sgc-toast[data-tipo="error"] { background: #be123c; }
+
+        /* --- Reporte individual --- */
+        .sgc-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+        .sgc-field > span { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: #64748b; }
+        .sgc-field .sgc-input { width: 100%; }
+        .sgc-repind-ctl { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 8px; padding: 12px 14px 0; background: #fff; flex-shrink: 0; }
+        @media (max-width: 480px) { .sgc-repind-ctl { grid-template-columns: 1fr 1fr; } .sgc-repind-ctl .sgc-span2 { grid-column: 1 / -1; } }
+        .sgc-repind-lista { padding: 8px 10px; outline-offset: -2px; }
+        .sgc-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; margin-bottom: 6px; border: 1px solid transparent; border-radius: 10px;
+            background: #fff; cursor: pointer; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+        .sgc-row:hover { border-color: #c7d2fe; background: #f5f7ff; }
+        .sgc-row[aria-selected="true"] { border-color: #6366f1; background: #eef2ff; }
+        .sgc-row-n { flex: 0 0 26px; text-align: right; font-size: 11px; font-weight: 700; color: #94a3b8; }
+        .sgc-row-main { min-width: 0; flex: 1; }
+        .sgc-row-nombre { margin: 0; font-size: 12.5px; font-weight: 700; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sgc-row-sub { margin: 0; font-size: 10.5px; color: #64748b; }
+        .sgc-nota { flex-shrink: 0; min-width: 44px; text-align: center; padding: 3px 8px; border-radius: 8px; font-size: 12px; font-weight: 800; }
+        .sgc-pie { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #fff; border-top: 1px solid #e2e8f0; flex-shrink: 0; }
+        .sgc-pie small { flex: 1; min-width: 0; font-size: 10.5px; color: #64748b; }
     </style>
+
+<style id="sgc-asistencia-config-ui">
+    .sgc-config-nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.65rem;margin-bottom:1rem}
+    .sgc-config-nav button{display:flex;align-items:center;gap:.65rem;text-align:left;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:.8rem .9rem;box-shadow:0 1px 2px rgba(15,23,42,.04);transition:.18s}
+    .sgc-config-nav button:hover{border-color:#93c5fd;transform:translateY(-1px);box-shadow:0 5px 14px rgba(15,23,42,.07)}
+    .sgc-config-nav .num{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:#eff6ff;color:#1d4ed8;font-weight:900;font-size:.75rem;flex:none}
+    .sgc-config-nav strong{display:block;font-size:.75rem;color:#0f172a}.sgc-config-nav span:last-child{display:block;font-size:.65rem;color:#64748b;margin-top:2px}
+    .sgc-config-group{background:#fff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(15,23,42,.04);margin-bottom:.8rem}
+    .sgc-config-group>summary{list-style:none;cursor:pointer;padding:.9rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem;background:linear-gradient(180deg,#f8fafc,#fff)}
+    .sgc-config-group>summary::-webkit-details-marker{display:none}.sgc-config-group>summary:hover{background:#f8fbff}
+    .sgc-config-group[open]>summary{border-bottom:1px solid #e2e8f0;background:#eff6ff}
+    .sgc-config-group .group-title{display:flex;align-items:center;gap:.7rem}.sgc-config-group .group-icon{width:36px;height:36px;border-radius:11px;background:#dbeafe;color:#1d4ed8;display:grid;place-items:center;font-size:1rem}
+    .sgc-config-group .group-meta{font-size:.65rem;color:#64748b;margin-top:2px}.sgc-config-group .chev{color:#64748b;transition:transform .18s}.sgc-config-group[open] .chev{transform:rotate(180deg)}
+    .sgc-config-group>.sgc-config-body{padding:.9rem}.sgc-config-body>section{margin-bottom:.8rem}.sgc-config-body>section:last-child{margin-bottom:0}
+    .sgc-assist-toolbar{display:flex;flex-wrap:wrap;gap:.65rem;align-items:flex-end}.sgc-assist-status{min-height:38px;display:flex;align-items:center;padding:.55rem .8rem;border-radius:10px;font-size:.72rem;font-weight:700}
+    .sgc-assist-matrix{border:1px solid #e2e8f0;border-radius:14px;overflow:auto;background:#fff}.sgc-assist-matrix table{min-width:900px;border-collapse:separate;border-spacing:0}.sgc-assist-matrix th{position:sticky;top:0;z-index:2;background:#f8fafc;border-bottom:1px solid #e2e8f0}.sgc-assist-matrix th,.sgc-assist-matrix td{padding:.55rem .5rem;border-right:1px solid #f1f5f9;vertical-align:middle}.sgc-assist-matrix th:last-child,.sgc-assist-matrix td:last-child{border-right:0}.sgc-assist-matrix tbody tr:hover{background:#f8fbff}.sgc-assist-student{position:sticky;left:0;z-index:1;background:#fff;min-width:210px}.sgc-assist-matrix thead .sgc-assist-student{z-index:3;background:#f8fafc}.sgc-assist-cell select{min-width:105px;font-size:.68rem;border:1px solid #cbd5e1;border-radius:8px;padding:.35rem .4rem;background:#fff}.sgc-assist-cell .hora{display:block;font-size:.58rem;color:#64748b;margin-top:.18rem}.sgc-assist-novedad{min-width:230px}.sgc-assist-novedad input{width:100%;font-size:.68rem;border:1px solid #cbd5e1;border-radius:8px;padding:.45rem .5rem}.sgc-assist-blank{color:#cbd5e1;text-align:center;font-size:.75rem}.sgc-assist-help{font-size:.68rem;color:#64748b}
+</style>
+
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-['Plus_Jakarta_Sans']">
 
@@ -2138,23 +2314,15 @@ video {
                 <span class="font-semibold">Filtrar por:</span>
                 <select id="select-filtro-curso" onchange="cambiarFiltro()" class="px-3 py-2 bg-slate-50 border rounded-lg text-sm"></select>
                 <select id="select-filtro-paralelo" onchange="cambiarFiltro()" class="px-3 py-2 bg-slate-50 border rounded-lg text-sm"></select>
-                <button onclick="limpiarNominaCompleta()" class="ml-auto bg-rose-50 text-rose-600 px-3 py-2 rounded-lg text-xs">🗑️ Vaciar Nómina</button>
-                <button onclick="asignarPeriodoActivoALegacy()" class="bg-amber-50 text-amber-700 px-3 py-2 rounded-lg text-xs" title="Asigna el período académico activo a los estudiantes importados antes de activar esta función">🔄 Asignar período a nómina existente</button>
             </div>
 
             <!-- Tabs -->
             <div class="bg-white rounded-2xl shadow-md overflow-hidden">
-                <div class="flex border-b overflow-x-auto"><button onclick="switchTab('estudiantes')" id="tab-btn-estudiantes" class="px-5 py-3 text-sm font-bold border-b-2 border-brand-600 text-brand-700 whitespace-nowrap">👥 Nómina</button><button onclick="switchTab('npt')" id="tab-btn-npt" class="px-5 py-3 text-sm font-semibold text-slate-500 whitespace-nowrap">📄 Notas por trimestre</button><button onclick="switchTab('cuadro')" id="tab-btn-cuadro" class="px-5 py-3 text-sm font-semibold text-slate-500 whitespace-nowrap">📊 Cuadro General</button><button onclick="switchTab('configuracion')" id="tab-btn-configuracion" class="px-5 py-3 text-sm font-semibold text-slate-500 whitespace-nowrap">⚙️ Configuración</button></div>
-                <div id="tab-estudiantes" class="p-5">
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                        <div class="bg-slate-50 p-4 rounded-xl col-span-2"><h4 class="font-bold mb-2">📂 Importar estudiantes</h4><div class="border-2 border-dashed rounded-lg p-3 text-center relative mb-2 bg-white"><input type="file" id="file-import" accept=".csv,.txt" onchange="prepararImportacionArchivo(event)" class="absolute inset-0 opacity-0 cursor-pointer"><svg class="w-8 h-8 text-slate-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg><p class="text-xs">Selecciona archivo CSV</p><button onclick="descargarPlantilla()" class="mt-1 text-brand-600 text-xs font-bold">📥 Descargar plantilla</button></div><details><summary class="text-xs font-bold cursor-pointer">✏️ Pegar datos manualmente</summary><textarea id="textarea-importar" rows="3" placeholder="Ord,Nómina,Cédula,Fecha Nac,Correo,Nombre Representante,Cédula R,Cel.Representante,Observaciones" class="w-full p-2 border rounded-lg text-xs mt-2"></textarea><button onclick="prepararImportacionPegado()" class="mt-2 bg-brand-600 text-white text-xs py-1.5 px-3 rounded-lg">Procesar</button></details></div>
-                        <div class="bg-slate-50 p-4 rounded-xl"><h4 class="font-bold mb-2">➕ Agregar individual</h4><div class="space-y-2"><input type="text" id="add-nombre" placeholder="Nombre completo" class="w-full p-2 border rounded-lg text-xs"><div class="grid grid-cols-2 gap-2"><select id="add-curso"><option>1°</option><option>2°</option><option>3°</option></select><select id="add-paralelo"><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>H</option><option>I</option></select></div><input type="text" id="add-cedula" placeholder="Cédula" class="w-full p-2 border rounded-lg text-xs"><input type="date" id="add-fecha" class="w-full p-2 border rounded-lg text-xs"><input type="email" id="add-correo" placeholder="Correo" class="w-full p-2 border rounded-lg text-xs"><input type="text" id="add-rep-nombre" placeholder="Representante" class="w-full p-2 border rounded-lg text-xs"><div class="grid grid-cols-2 gap-2"><input type="text" id="add-rep-cedula" placeholder="Cédula R."><input type="text" id="add-rep-celular" placeholder="Celular"></div><textarea id="add-observaciones" placeholder="Observaciones" class="w-full p-2 border rounded-lg text-xs"></textarea><button onclick="agregarEstudiante()" class="w-full bg-slate-800 text-white py-2 rounded-lg text-sm font-bold">Guardar</button></div></div>
-                    </div>
-                    <div class="overflow-x-auto"><table class="min-w-full text-xs"><thead class="bg-slate-50"><tr><th>#</th><th>Nómina</th><th>Curso</th><th>Paralelo</th><th>Cédula</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tabla-estudiantes-body"></tbody></table><div id="no-estudiantes-alert" class="hidden text-center py-6 text-slate-400">👥 No hay estudiantes en este curso/paralelo.</div></div>
-                </div>
+                <div class="flex border-b overflow-x-auto"><button onclick="switchTab('npt')" id="tab-btn-npt" class="px-5 py-3 text-sm font-bold border-b-2 border-brand-600 text-brand-700 whitespace-nowrap">📄 Notas por trimestre</button><button onclick="switchTab('asistencia')" id="tab-btn-asistencia" class="px-5 py-3 text-sm font-semibold text-slate-500 whitespace-nowrap">📅 Registro de asistencia</button><button onclick="switchTab('cuadro')" id="tab-btn-cuadro" class="px-5 py-3 text-sm font-semibold text-slate-500 whitespace-nowrap">📊 Cuadro General</button><button onclick="switchTab('configuracion')" id="tab-btn-configuracion" class="px-5 py-3 text-sm font-semibold text-slate-500 whitespace-nowrap">⚙️ Configuración</button></div>
+
 
                 <!-- TAB NPT DOCENTE -->
-                <div id="tab-npt" class="hidden p-5">
+                <div id="tab-npt" class="p-5">
                     <!-- Control de habilitación (trimestres + supletorio, en pestañas) -->
                     <div class="bg-slate-50 rounded-xl p-4 mb-5">
                         <h4 class="font-bold mb-3 text-sm">⚙️ Control de Habilitación</h4>
@@ -2242,6 +2410,43 @@ video {
                     </div>
                 </div>
 
+                <!-- REGISTRO DE ASISTENCIA / NOVEDADES -->
+                <div id="tab-asistencia" class="hidden p-5 space-y-5">
+                    <section class="bg-white border rounded-2xl p-4 shadow-sm">
+                        <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+                            <div>
+                                <div class="flex items-center gap-2"><span class="w-9 h-9 rounded-xl bg-brand-100 text-brand-700 grid place-items-center">✓</span><div><h4 class="font-black text-base">Registro de Asistencia / Novedades</h4><p class="text-xs text-slate-500 mt-1">Seleccione una fecha laborable. El sistema consulta el horario y presenta a cada estudiante una sola vez, con sus horas de clase consecutivas.</p></div></div>
+                            </div>
+                            <div id="asistencia-dia-seleccionado" class="sgc-assist-status bg-slate-50 text-slate-600 border border-slate-200">Seleccione una fecha.</div>
+                        </div>
+                        <div class="sgc-assist-toolbar bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4">
+                            <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Fecha</label><input id="asistencia-fecha" type="date" onchange="asistenciaSeleccionarFecha(this.value)" class="px-3 py-2 border rounded-lg text-sm bg-white"></div>
+                            <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Curso</label><select id="asistencia-curso" onchange="renderAsistenciaLista(); cargarObservacionesCursoFecha(asistenciaFechaActiva)" class="px-3 py-2 border rounded-lg text-sm bg-white"><option value="">Todos los cursos</option></select></div>
+                            <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Paralelo</label><select id="asistencia-paralelo" onchange="renderAsistenciaLista(); cargarObservacionesCursoFecha(asistenciaFechaActiva)" class="px-3 py-2 border rounded-lg text-sm bg-white"><option value="">Todos los paralelos</option></select></div>
+                            <div id="asistencia-estado-fecha" class="sgc-assist-status bg-slate-100 text-slate-500 border border-slate-200">Sin fecha seleccionada</div>
+                            <button onclick="guardarAsistencia()" id="asistencia-btn-guardar" class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-lg text-sm font-bold">💾 Guardar asistencia / novedades</button>
+                        </div>
+                        <div id="asistencia-aviso" class="hidden mb-3 rounded-lg p-3 text-xs"></div>
+                        <div class="flex items-center justify-between gap-2 mb-2"><div class="sgc-assist-help">Cada fila corresponde a un estudiante. Cada columna representa una hora/asignatura del día. Así se evita repetir nombres.</div><div id="asistencia-resumen-clases" class="text-[10px] font-bold text-brand-700"></div></div>
+                        <div class="sgc-assist-matrix">
+                            <table class="min-w-full text-xs">
+                                <thead id="asistencia-cabecera"></thead>
+                                <tbody id="asistencia-tabla"></tbody>
+                            </table>
+                            <div id="asistencia-vacia" class="hidden text-center py-8 text-slate-400 text-xs">Selecciona una fecha laborable y un curso/paralelo con estudiantes.</div>
+                        </div>
+                    </section>
+                    <section class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                        <div class="flex flex-wrap items-start justify-between gap-2 mb-2"><div><h4 class="font-bold text-sm text-amber-900">📝 Observación / Novedad del curso</h4><p class="text-[11px] text-amber-800">Registra información que afecta al curso completo: comportamiento general, actividad institucional, novedad pedagógica, situación del grupo, etc.</p></div><span id="asistencia-curso-novedad-contexto" class="text-[10px] font-bold text-amber-700"></span></div>
+                        <textarea id="asistencia-observacion-curso" maxlength="1000" rows="4" class="w-full border border-amber-200 rounded-lg bg-white px-3 py-2 text-sm" placeholder="Escriba la observación o novedad correspondiente a todo el curso..."></textarea>
+                        <div class="flex justify-end mt-2"><button onclick="guardarObservacionCurso()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-xs font-bold">💾 Guardar observación del curso</button></div>
+                    </section>
+                    <section class="bg-slate-50 rounded-xl p-4">
+                        <div class="flex flex-wrap justify-between items-end gap-3 mb-3"><div><h4 class="font-bold text-sm">📊 Reporte de asistencia y novedades</h4><p class="text-[11px] text-slate-500 mt-1">Incluye asignatura, asistencia, novedades individuales y observaciones generales del curso dentro del rango seleccionado.</p></div><button onclick="generarReporteAsistencia()" class="bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-bold">📥 Generar reporte CSV</button></div>
+                        <div class="flex flex-wrap gap-3"><label class="text-xs">Desde <input id="asistencia-reporte-desde" type="date" class="ml-1 px-2 py-1 border rounded"></label><label class="text-xs">Hasta <input id="asistencia-reporte-hasta" type="date" class="ml-1 px-2 py-1 border rounded"></label></div>
+                    </section>
+                </div>
+
                 <!-- Cuadro General: Cuaderno, Libro, Tarea, Examen -->
                 <div id="tab-cuadro" class="hidden p-5">
                     <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
@@ -2280,6 +2485,16 @@ video {
                 <!-- TAB CONFIGURACIÓN -->
                 <div id="tab-configuracion" class="hidden p-5 space-y-6">
 
+                    <section class="bg-slate-50 rounded-xl p-4"><h4 class="font-bold text-sm mb-3">👥 Nómina de estudiantes</h4><p class="text-[11px] text-slate-500 mb-3">Importa, agrega y consulta estudiantes desde Configuración.</p>
+                <div id="tab-estudiantes" class="p-5">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                        <div class="bg-slate-50 p-4 rounded-xl col-span-2"><h4 class="font-bold mb-2">📂 Importar estudiantes</h4><div class="border-2 border-dashed rounded-lg p-3 text-center relative mb-2 bg-white"><input type="file" id="file-import" accept=".csv,.txt" onchange="prepararImportacionArchivo(event)" class="absolute inset-0 opacity-0 cursor-pointer"><svg class="w-8 h-8 text-slate-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg><p class="text-xs">Selecciona archivo CSV</p><button onclick="descargarPlantilla()" class="mt-1 text-brand-600 text-xs font-bold">📥 Descargar plantilla</button></div><details><summary class="text-xs font-bold cursor-pointer">✏️ Pegar datos manualmente</summary><textarea id="textarea-importar" rows="3" placeholder="Ord,Nómina,Cédula,Fecha Nac,Correo,Nombre Representante,Cédula R,Cel.Representante,Observaciones" class="w-full p-2 border rounded-lg text-xs mt-2"></textarea><button onclick="prepararImportacionPegado()" class="mt-2 bg-brand-600 text-white text-xs py-1.5 px-3 rounded-lg">Procesar</button></details></div>
+                        <div class="bg-slate-50 p-4 rounded-xl"><h4 class="font-bold mb-2">➕ Agregar individual</h4><div class="space-y-2"><input type="text" id="add-nombre" placeholder="Nombre completo" class="w-full p-2 border rounded-lg text-xs"><div class="grid grid-cols-2 gap-2"><select id="add-curso"><option>1°</option><option>2°</option><option>3°</option></select><select id="add-paralelo"><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>H</option><option>I</option></select></div><input type="text" id="add-cedula" placeholder="Cédula" class="w-full p-2 border rounded-lg text-xs"><input type="date" id="add-fecha" class="w-full p-2 border rounded-lg text-xs"><input type="email" id="add-correo" placeholder="Correo" class="w-full p-2 border rounded-lg text-xs"><input type="text" id="add-rep-nombre" placeholder="Representante" class="w-full p-2 border rounded-lg text-xs"><div class="grid grid-cols-2 gap-2"><input type="text" id="add-rep-cedula" placeholder="Cédula R."><input type="text" id="add-rep-celular" placeholder="Celular"></div><textarea id="add-observaciones" placeholder="Observaciones" class="w-full p-2 border rounded-lg text-xs"></textarea><button onclick="agregarEstudiante()" class="w-full bg-slate-800 text-white py-2 rounded-lg text-sm font-bold">Guardar</button></div></div>
+                    </div>
+                    <div class="overflow-x-auto"><table class="min-w-full text-xs"><thead class="bg-slate-50"><tr><th>#</th><th>Nómina</th><th>Curso</th><th>Paralelo</th><th>Cédula</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tabla-estudiantes-body"></tbody></table><div id="no-estudiantes-alert" class="hidden text-center py-6 text-slate-400">👥 No hay estudiantes en este curso/paralelo.</div></div>
+                </div>
+                    </section>
+
                     <!-- (A) Período académico activo + trimestres -->
                     <section class="bg-slate-50 rounded-xl p-4">
                         <h4 class="font-bold text-sm mb-3">🗓️ Período académico y trimestres</h4>
@@ -2302,6 +2517,27 @@ video {
                         <h5 class="font-bold text-xs text-slate-600 uppercase mb-2">Trimestres del período</h5>
                         <div id="cfg-trimestres-lista" class="space-y-2"></div>
                         <p class="text-[11px] text-slate-400 mt-2">Cada trimestre debe tener un nombre y un rango de fechas. Los cambios se guardan al pulsar "Guardar trimestres".</p>
+                    </section>
+
+                    <section class="bg-slate-50 rounded-xl p-4">
+                        <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+                            <div><h4 class="font-bold text-sm mb-1">🗓️ Calendario académico · excepciones no laborables</h4><p class="text-[11px] text-slate-500">Solo se registran las fechas <strong>no laborables</strong>. De lunes a viernes, toda fecha que no esté registrada aquí se considera laborable automáticamente. Sábados y domingos no son laborables.</p></div>
+                            <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-3 py-1 text-[10px] font-bold">✓ L-V laborables por defecto</span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+                            <label class="text-[11px] font-bold text-slate-600">Fecha no laborable<input id="cfg-cal-fecha" type="date" class="block w-full px-3 py-2 border rounded-lg bg-white text-sm"></label>
+                            <label class="text-[11px] font-bold text-slate-600">Motivo<input id="cfg-cal-motivo" maxlength="160" class="block w-full px-3 py-2 border rounded-lg bg-white text-sm" placeholder="Ej. feriado, suspensión, jornada institucional"></label>
+                            <button onclick="guardarFechaCalendario()" class="bg-brand-600 text-white px-3 py-2 rounded-lg text-xs font-bold">➕ Registrar no laborable</button>
+                        </div>
+                        <div id="cfg-calendario-lista" class="mt-3 space-y-1"></div>
+                    </section>
+                    <section class="bg-slate-50 rounded-xl p-4">
+                        <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+                            <div><h4 class="font-bold text-sm mb-1">🕒 Horario académico · creación visual</h4><p class="text-[11px] text-slate-500">Construye el horario directamente en la matriz. Cada bloque puede registrar <strong>asignatura, curso y paralelo</strong>. No se registra el nombre del docente.</p></div>
+                            <div class="flex gap-2"><button onclick="abrirEditorHorario()" class="bg-brand-600 text-white px-3 py-2 rounded-lg text-xs font-bold">➕ Agregar / editar</button><button onclick="limpiarHorarioDocente()" class="bg-rose-50 text-rose-700 border border-rose-200 px-3 py-2 rounded-lg text-xs font-bold">Limpiar horario</button></div>
+                        </div>
+                        <div id="cfg-horario-matriz" class="overflow-x-auto rounded-xl border bg-white"></div>
+                        <div id="cfg-horario-resumen" class="mt-3 text-xs text-slate-600"></div>
                     </section>
 
                     <!-- (B) Fórmula de promedio ponderado -->
@@ -2672,15 +2908,69 @@ video {
         </div>
     </div>
 
-    <!-- Modal: Bandeja de Solicitudes de Recuperación (lado docente) -->
-    <div id="npt-solicitudes-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl w-full max-w-3xl shadow-2xl max-h-[88vh] flex flex-col">
-            <div class="flex justify-between border-b px-6 py-4 flex-shrink-0">
-                <h3 class="font-black text-base">📩 Solicitudes de Recuperación</h3>
-                <button onclick="cerrarSolicitudesRecuperacionModalNPT()" class="text-slate-400 hover:text-slate-700">✖</button>
+    <!-- Ventana flotante: Bandeja de Solicitudes de Recuperación (lado docente) — movible, redimensionable, cerrable -->
+    <div id="npt-solicitudes-modal" class="sgc-fw hidden" role="dialog" aria-modal="false" aria-labelledby="sgc-sol-titulo" tabindex="-1" style="width:min(960px,calc(100vw - 32px));height:min(680px,calc(100vh - 48px));">
+        <div class="sgc-fw-head" data-fw-handle>
+            <span class="sgc-fw-grip" aria-hidden="true">⋮⋮</span>
+            <h3 id="sgc-sol-titulo" class="sgc-fw-title">📩 Solicitudes de Recuperación</h3>
+            <span id="sgc-sol-resumen" class="sgc-fw-sub"></span>
+            <div class="sgc-fw-actions">
+                <button type="button" class="sgc-fw-btn" data-fw-act="max" title="Maximizar / restaurar (doble clic en el título)" aria-label="Maximizar o restaurar ventana">
+                    <svg class="sgc-ic-max" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/></svg>
+                    <svg class="sgc-ic-restore" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M5.5 5.5v-2a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/></svg>
+                </button>
+                <button type="button" class="sgc-fw-btn sgc-fw-close" data-fw-act="close" title="Cerrar (Esc)" aria-label="Cerrar ventana">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg>
+                </button>
             </div>
-            <div id="npt-solicitudes-lista" class="p-6 overflow-y-auto space-y-3">
-                <!-- generado por JS -->
+        </div>
+        <div class="sgc-fw-body">
+            <div id="sgc-sol-tabs" class="sgc-tabs" role="tablist" aria-label="Filtrar por estado"></div>
+            <div class="sgc-toolbar">
+                <input id="sgc-sol-q" type="search" class="sgc-input sgc-grow" placeholder="🔎 Buscar por estudiante, cédula, representante o motivo…" autocomplete="off" aria-label="Buscar solicitudes">
+                <select id="sgc-sol-grupo" class="sgc-input" aria-label="Filtrar por curso y paralelo"></select>
+                <select id="sgc-sol-trim" class="sgc-input" aria-label="Filtrar por trimestre"></select>
+                <select id="sgc-sol-orden" class="sgc-input" aria-label="Ordenar solicitudes">
+                    <option value="recientes">Más recientes primero</option>
+                    <option value="antiguas">Más antiguas primero</option>
+                    <option value="nombre">Estudiante (A–Z)</option>
+                </select>
+                <button type="button" class="sgc-btn" data-act="limpiar" title="Quitar búsqueda y filtros">Limpiar</button>
+            </div>
+            <div id="sgc-sol-bulk" class="sgc-bulk"></div>
+            <div id="npt-solicitudes-lista" class="sgc-scroll sgc-lista" aria-live="polite"></div>
+        </div>
+    </div>
+
+    <!-- Ventana flotante: Reporte Individual — movible, redimensionable, cerrable; accede a todos los estudiantes -->
+    <div id="sgc-rep-ind-win" class="sgc-fw hidden" role="dialog" aria-modal="false" aria-labelledby="sgc-repind-titulo" tabindex="-1" style="width:min(580px,calc(100vw - 32px));height:min(680px,calc(100vh - 48px));">
+        <div class="sgc-fw-head" data-fw-handle>
+            <span class="sgc-fw-grip" aria-hidden="true">⋮⋮</span>
+            <h3 id="sgc-repind-titulo" class="sgc-fw-title">👤 Reporte Individual</h3>
+            <div class="sgc-fw-actions">
+                <button type="button" class="sgc-fw-btn" data-fw-act="max" title="Maximizar / restaurar (doble clic en el título)" aria-label="Maximizar o restaurar ventana">
+                    <svg class="sgc-ic-max" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/></svg>
+                    <svg class="sgc-ic-restore" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M5.5 5.5v-2a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/></svg>
+                </button>
+                <button type="button" class="sgc-fw-btn sgc-fw-close" data-fw-act="close" title="Cerrar (Esc)" aria-label="Cerrar ventana">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="sgc-fw-body">
+            <div class="sgc-repind-ctl">
+                <label class="sgc-field"><span>Curso</span><select id="sgc-repind-curso" class="sgc-input"></select></label>
+                <label class="sgc-field"><span>Paralelo</span><select id="sgc-repind-paralelo" class="sgc-input"></select></label>
+                <label class="sgc-field sgc-span2"><span>Trimestre</span><select id="sgc-repind-trim" class="sgc-input"></select></label>
+            </div>
+            <div class="sgc-toolbar" style="border-bottom:0;padding-top:10px;">
+                <input id="sgc-repind-q" type="search" class="sgc-input sgc-grow" placeholder="🔎 Buscar estudiante por nombre o cédula…" autocomplete="off" aria-label="Buscar estudiante" aria-controls="sgc-repind-lista">
+            </div>
+            <div id="sgc-repind-resumen" class="sgc-bulk"></div>
+            <div id="sgc-repind-lista" class="sgc-scroll sgc-repind-lista" role="listbox" tabindex="0" aria-label="Estudiantes"></div>
+            <div class="sgc-pie">
+                <small>↑ ↓ para moverte · Enter o doble clic para generar</small>
+                <button id="sgc-repind-generar" type="button" class="sgc-btn sgc-btn-primary">📄 Generar reporte</button>
             </div>
         </div>
     </div>
@@ -4962,6 +5252,7 @@ video {
 
         // ==================== NAVEGACIÓN ====================
         function mostrarPantalla(id) {
+            document.querySelectorAll('.sgc-fw:not(.hidden)').forEach(w => sgcFwCerrar(w.id));
             document.querySelectorAll('[id^="screen-"]').forEach(el => el.classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
         }
@@ -5011,12 +5302,12 @@ video {
         }
         function cerrarSesionDocente() { mostrarPantalla('screen-login'); }
         function switchTab(tab) {
-            document.getElementById('tab-estudiantes').classList.toggle('hidden', tab !== 'estudiantes');
+            document.getElementById('tab-asistencia').classList.toggle('hidden', tab !== 'asistencia');
             document.getElementById('tab-npt').classList.toggle('hidden', tab !== 'npt');
             document.getElementById('tab-cuadro').classList.toggle('hidden', tab !== 'cuadro');
             document.getElementById('tab-configuracion').classList.toggle('hidden', tab !== 'configuracion');
 
-            ['estudiantes','npt','cuadro','configuracion'].forEach(t => {
+            ['asistencia','npt','cuadro','configuracion'].forEach(t => {
                 const btn = document.getElementById(`tab-btn-${t}`);
                 if (!btn) return;
                 if (t === tab) {
@@ -5027,10 +5318,10 @@ video {
                     btn.classList.add('text-slate-500');
                 }
             });
-            if (tab === 'estudiantes') mostrarTablaEstudiantes();
+            if (tab === 'asistencia') { renderAsistenciaCalendario(); renderAsistenciaLista(); }
+            if (tab === 'configuracion') renderTabConfiguracion();
             if (tab === 'npt') { renderControlTrimestres(); renderNPTDocente(); }
             if (tab === 'cuadro') renderCuadroGeneral();
-            if (tab === 'configuracion') renderTabConfiguracion();
         }
 
         // ==================== MÓDULO NPT TRIMESTRAL ====================
@@ -5213,6 +5504,12 @@ video {
         //   configuracion/trimestres                     → { 1: {label, meses, desde, hasta}, 2: {...}, 3: {...} }
         //   configuracion/formulaPromedio                → { cuaderno: 25, libro: 25, tarea: 20, talleres: 30 }  (porcentajes)
         let cfgPeriodoActivo = null;
+        let calendarioAcademico = {};
+        let horarioDocente = [];
+        let asistenciaRegistros = {};
+        let asistenciaNovedadesEstudiante = {};
+        let asistenciaMesVisible = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        let asistenciaFechaActiva = '';
         let cfgTrimestres = null;       // null = usar NPT_TRIMESTRES por defecto
         let cfgFormulaPromedio = null;  // null = promedio simple
         let cfgFirmaDocente = null;     // null = sin firma registrada. Si existe: { base64, mime, fecha }
@@ -8643,7 +8940,229 @@ video {
             }
         }
 
-        // ==================== Solicitudes de Recuperación (bandeja docente) ====================
+        // ==================== VENTANAS FLOTANTES SGC ====================
+        // Ventanas no modales: se arrastran desde el encabezado, se redimensionan desde la esquina inferior
+        // derecha, se maximizan (botón o doble clic en el encabezado) y se cierran (✕ o Esc). Recuerdan su
+        // posición y tamaño durante la sesión. En pantallas ≤ 640 px ocupan toda la pantalla.
+        const SGC_FW = { zTop: 2000, estado: {} };
+        function sgcFwMovil() { return !!(window.matchMedia && window.matchMedia('(max-width: 640px)').matches); }
+        function sgcFwFrente(el) { SGC_FW.zTop += 1; el.style.zIndex = String(SGC_FW.zTop); }
+        // Mantiene la ventana alcanzable: al menos 120 px visibles en horizontal y el encabezado dentro de la pantalla.
+        function sgcFwAcotar(el) {
+            if (el.classList.contains('sgc-fw-max') || sgcFwMovil()) return;
+            const vw = window.innerWidth, vh = window.innerHeight, w = el.offsetWidth;
+            let left = parseFloat(el.style.left), top = parseFloat(el.style.top);
+            if (isNaN(left)) left = 8;
+            if (isNaN(top)) top = 8;
+            left = Math.min(Math.max(left, 120 - w), vw - 120);
+            top = Math.min(Math.max(top, 0), Math.max(0, vh - 48));
+            el.style.left = left + 'px';
+            el.style.top = top + 'px';
+        }
+        function sgcFwInicializar(el) {
+            if (el._fwListo) return;
+            el._fwListo = true;
+            const cab = el.querySelector('[data-fw-handle]');
+            el.addEventListener('pointerdown', () => sgcFwFrente(el), true);
+            el.addEventListener('click', (ev) => {
+                const b = ev.target.closest('[data-fw-act]');
+                if (!b || !el.contains(b)) return;
+                if (b.dataset.fwAct === 'close') sgcFwCerrar(el.id);
+                else if (b.dataset.fwAct === 'max') sgcFwAlternarMax(el);
+            });
+            if (!cab) return;
+            cab.addEventListener('dblclick', (ev) => {
+                if (ev.target.closest('button') || sgcFwMovil()) return;
+                sgcFwAlternarMax(el);
+            });
+            cab.addEventListener('pointerdown', (ev) => {
+                if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+                if (ev.target.closest('button, a, input, select, textarea')) return;
+                if (sgcFwMovil() || el.classList.contains('sgc-fw-max')) return;
+                const r = el.getBoundingClientRect();
+                const dx = ev.clientX - r.left, dy = ev.clientY - r.top;
+                try { cab.setPointerCapture(ev.pointerId); } catch (_) {}
+                el.classList.add('sgc-fw-arrastrando');
+                const mover = (e) => {
+                    el.style.left = (e.clientX - dx) + 'px';
+                    el.style.top = (e.clientY - dy) + 'px';
+                    sgcFwAcotar(el);
+                };
+                const soltar = (e) => {
+                    cab.removeEventListener('pointermove', mover);
+                    cab.removeEventListener('pointerup', soltar);
+                    cab.removeEventListener('pointercancel', soltar);
+                    try { cab.releasePointerCapture(e.pointerId); } catch (_) {}
+                    el.classList.remove('sgc-fw-arrastrando');
+                };
+                cab.addEventListener('pointermove', mover);
+                cab.addEventListener('pointerup', soltar);
+                cab.addEventListener('pointercancel', soltar);
+                ev.preventDefault();
+            });
+        }
+        function sgcFwAbrir(id) {
+            const el = document.getElementById(id);
+            if (!el) return null;
+            sgcFwInicializar(el);
+            const estabaOculta = el.classList.contains('hidden');
+            if (estabaOculta) {
+                el._fwOpener = document.activeElement;
+                el.classList.remove('hidden');
+                const st = SGC_FW.estado[id];
+                if (st && st.width) { el.style.width = st.width + 'px'; el.style.height = st.height + 'px'; }
+                el.classList.toggle('sgc-fw-max', !!(st && st.max));
+                if (st && st.left != null) {
+                    el.style.left = st.left + 'px';
+                    el.style.top = st.top + 'px';
+                } else {
+                    // Primera apertura: centrada, con un pequeño desfase si ya hay otra ventana abierta.
+                    const n = Math.max(0, document.querySelectorAll('.sgc-fw:not(.hidden)').length - 1);
+                    el.style.left = Math.max(8, (window.innerWidth - el.offsetWidth) / 2 + n * 28) + 'px';
+                    el.style.top = Math.max(8, (window.innerHeight - el.offsetHeight) / 2 - 10 + n * 28) + 'px';
+                }
+                sgcFwAcotar(el);
+            }
+            sgcFwFrente(el);
+            return el;
+        }
+        function sgcFwAlternarMax(el) {
+            const id = el.id;
+            if (!el.classList.contains('sgc-fw-max')) {
+                const r = el.getBoundingClientRect();
+                SGC_FW.estado[id] = { left: r.left, top: r.top, width: r.width, height: r.height, max: true };
+                el.classList.add('sgc-fw-max');
+            } else {
+                el.classList.remove('sgc-fw-max');
+                const st = SGC_FW.estado[id];
+                if (st && st.width) {
+                    el.style.left = st.left + 'px'; el.style.top = st.top + 'px';
+                    el.style.width = st.width + 'px'; el.style.height = st.height + 'px';
+                    SGC_FW.estado[id] = { ...st, max: false };
+                }
+                sgcFwAcotar(el);
+            }
+        }
+        function sgcFwCerrar(id) {
+            const el = document.getElementById(id);
+            if (!el || el.classList.contains('hidden')) return;
+            const prev = SGC_FW.estado[id] || {};
+            if (el.classList.contains('sgc-fw-max')) {
+                SGC_FW.estado[id] = { ...prev, max: true };
+            } else {
+                const r = el.getBoundingClientRect();
+                SGC_FW.estado[id] = { left: r.left, top: r.top, width: r.width, height: r.height, max: false };
+            }
+            el.classList.add('hidden');
+            const capa = el.querySelector('.sgc-dlg-layer');
+            if (capa && typeof capa._cancelar === 'function') capa._cancelar();
+            const op = el._fwOpener;
+            el._fwOpener = null;
+            if (op && document.contains(op) && typeof op.focus === 'function') { try { op.focus(); } catch (_) {} }
+        }
+        // Aviso breve dentro de la ventana (sustituye a alert()).
+        function sgcFwToast(win, mensaje, tipo = 'info') {
+            const host = win.querySelector('.sgc-fw-body') || win;
+            let t = host.querySelector('.sgc-toast');
+            if (!t) {
+                t = document.createElement('div');
+                t.className = 'sgc-toast';
+                t.setAttribute('role', 'status');
+                t.setAttribute('aria-live', 'polite');
+                host.appendChild(t);
+            }
+            t.textContent = mensaje;
+            t.dataset.tipo = tipo;
+            t.classList.add('sgc-toast-on');
+            clearTimeout(t._h);
+            t._h = setTimeout(() => t.classList.remove('sgc-toast-on'), 3600);
+        }
+        // Diálogo de confirmación dentro de la ventana (sustituye a confirm()/prompt()).
+        // op: { titulo, mensaje, extraHtml (HTML de confianza), tipo: 'ok'|'danger'|'info', textoConfirmar,
+        //       textoCancelar, motivo: { etiqueta, placeholder, requerido } }  → Promise<{ ok, motivo }>
+        function sgcFwDialogo(win, op) {
+            return new Promise((resolve) => {
+                const host = win.querySelector('.sgc-fw-body') || win;
+                let capa = host.querySelector('.sgc-dlg-layer');
+                if (!capa) {
+                    capa = document.createElement('div');
+                    capa.className = 'sgc-dlg-layer hidden';
+                    host.appendChild(capa);
+                }
+                if (typeof capa._cancelar === 'function') capa._cancelar();
+                const claseBtn = op.tipo === 'danger' ? 'sgc-btn-danger' : (op.tipo === 'ok' ? 'sgc-btn-ok' : 'sgc-btn-primary');
+                const mensaje = escapeHtml(op.mensaje || '').replace(/\n/g, '<br>');
+                capa.innerHTML = `<div class="sgc-dlg" role="alertdialog" aria-modal="true" aria-labelledby="sgc-dlg-t">
+                    <h4 id="sgc-dlg-t">${escapeHtml(op.titulo || '')}</h4>
+                    <p>${mensaje}</p>
+                    ${op.extraHtml || ''}
+                    ${op.motivo ? `<label class="sgc-field"><span>${escapeHtml(op.motivo.etiqueta || 'Motivo')}</span><textarea maxlength="400" placeholder="${escapeHtml(op.motivo.placeholder || '')}"></textarea></label><p class="sgc-dlg-err" role="alert"></p>` : ''}
+                    <div class="sgc-dlg-pie">
+                        <button type="button" class="sgc-btn" data-dlg="cancel">${escapeHtml(op.textoCancelar || 'Cancelar')}</button>
+                        <button type="button" class="sgc-btn ${claseBtn}" data-dlg="ok">${escapeHtml(op.textoConfirmar || 'Aceptar')}</button>
+                    </div>
+                </div>`;
+                const cerrar = (res) => {
+                    capa._cancelar = null;
+                    capa.onclick = null;
+                    capa.onkeydown = null;
+                    capa.classList.add('hidden');
+                    capa.innerHTML = '';
+                    resolve(res);
+                };
+                capa._cancelar = () => cerrar({ ok: false, motivo: '' });
+                capa.querySelector('[data-dlg="cancel"]').onclick = () => cerrar({ ok: false, motivo: '' });
+                capa.querySelector('[data-dlg="ok"]').onclick = () => {
+                    let valor = '';
+                    if (op.motivo) {
+                        const ta = capa.querySelector('textarea');
+                        valor = ta.value.trim();
+                        if (op.motivo.requerido && !valor) {
+                            capa.querySelector('.sgc-dlg-err').textContent = 'Este campo es obligatorio.';
+                            ta.focus();
+                            return;
+                        }
+                    }
+                    cerrar({ ok: true, motivo: valor });
+                };
+                capa.onclick = (ev) => { if (ev.target === capa) cerrar({ ok: false, motivo: '' }); };
+                // Trampa de foco: Tab no sale del diálogo.
+                capa.onkeydown = (ev) => {
+                    if (ev.key !== 'Tab') return;
+                    const foc = [...capa.querySelectorAll('textarea, button')].filter(x => !x.disabled);
+                    if (!foc.length) return;
+                    const primero = foc[0], ultimo = foc[foc.length - 1];
+                    if (ev.shiftKey && document.activeElement === primero) { ev.preventDefault(); ultimo.focus(); }
+                    else if (!ev.shiftKey && document.activeElement === ultimo) { ev.preventDefault(); primero.focus(); }
+                };
+                capa.classList.remove('hidden');
+                setTimeout(() => { (capa.querySelector('textarea') || capa.querySelector('[data-dlg="ok"]')).focus(); }, 20);
+            });
+        }
+        // Esc: cierra primero el diálogo interno y, si no hay, la ventana más al frente.
+        document.addEventListener('keydown', (ev) => {
+            if (ev.key !== 'Escape') return;
+            const abiertas = [...document.querySelectorAll('.sgc-fw:not(.hidden)')];
+            if (!abiertas.length) return;
+            const objetivo = ev.target;
+            if (objetivo && objetivo.matches && objetivo.matches('input[type="search"]') && objetivo.value) {
+                objetivo.value = '';
+                objetivo.dispatchEvent(new Event('input', { bubbles: true }));
+                ev.preventDefault();
+                return;
+            }
+            abiertas.sort((a, b) => (parseInt(b.style.zIndex, 10) || 0) - (parseInt(a.style.zIndex, 10) || 0));
+            const frente = abiertas[0];
+            const dlg = frente.querySelector('.sgc-dlg-layer:not(.hidden)');
+            if (dlg && typeof dlg._cancelar === 'function') { dlg._cancelar(); ev.preventDefault(); return; }
+            sgcFwCerrar(frente.id);
+            ev.preventDefault();
+        });
+        window.addEventListener('resize', () => {
+            document.querySelectorAll('.sgc-fw:not(.hidden)').forEach(sgcFwAcotar);
+        });
+
+        // ==================== Solicitudes de Recuperación (ventana flotante docente) ====================
         function nptTodasLasSolicitudesRecuperacion() {
             const lista = [];
             Object.keys(nptSolicitudesRecuperacion).forEach(cedula => {
@@ -8669,112 +9188,469 @@ video {
                 badge.classList.add('hidden');
             }
         }
-        function abrirSolicitudesRecuperacionModalNPT() {
-            document.getElementById('npt-solicitudes-modal').classList.remove('hidden');
-            renderSolicitudesRecuperacionNPT();
+
+        const SGC_SOL_ID = 'npt-solicitudes-modal';
+        // Estado de la interfaz (filtros, orden, selección). La clave de una solicitud es "cedula|trimestre|clave".
+        const sgcSol = { tab: 'pendiente', q: '', grupo: '', trim: '', orden: 'recientes', sel: new Set(), exp: new Set(), listo: false };
+        function sgcSolWin() { return document.getElementById(SGC_SOL_ID); }
+        function sgcSolEstado(s) { return s && (s.estado === 'pendiente' || s.estado === 'aprobada') ? s.estado : 'rechazada'; }
+        function sgcSolNorm(v) { return texto(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+        function sgcSolEntradas() {
+            const porCedula = new Map(estudiantes.map(e => [e.cedula, e]));
+            const out = [];
+            Object.keys(nptSolicitudesRecuperacion || {}).forEach(cedula => {
+                const porTrim = nptSolicitudesRecuperacion[cedula] || {};
+                Object.keys(porTrim).forEach(trimKey => {
+                    const porClave = porTrim[trimKey] || {};
+                    Object.keys(porClave).forEach(clave => {
+                        const s = porClave[clave];
+                        if (!s || typeof s !== 'object') return;
+                        const num = parseInt(String(trimKey).replace('trimestre', ''), 10);
+                        const est = porCedula.get(cedula);
+                        out.push({
+                            key: `${cedula}|${num}|${clave}`, cedula, num, clave, s,
+                            nombre: texto(s.nombre || est?.nombre || cedula),
+                            curso: texto(s.curso || est?.curso || ''),
+                            paralelo: texto(s.paralelo || est?.paralelo || '')
+                        });
+                    });
+                });
+            });
+            return out;
         }
-        function cerrarSolicitudesRecuperacionModalNPT() {
-            document.getElementById('npt-solicitudes-modal').classList.add('hidden');
+        function sgcSolResolver(key) {
+            const i1 = key.indexOf('|'), i2 = key.indexOf('|', i1 + 1);
+            if (i1 < 0 || i2 < 0) return null;
+            const cedula = key.slice(0, i1), num = parseInt(key.slice(i1 + 1, i2), 10), clave = key.slice(i2 + 1);
+            return sgcSolEntradas().find(e => e.cedula === cedula && e.num === num && e.clave === clave) || null;
+        }
+        function sgcSolFiltrar(entradas) {
+            const q = sgcSolNorm(sgcSol.q).trim();
+            const partes = q ? q.split(/\s+/) : [];
+            return entradas.filter(e => {
+                if (sgcSol.grupo && `${e.curso}|${e.paralelo}` !== sgcSol.grupo) return false;
+                if (sgcSol.trim && String(e.num) !== sgcSol.trim) return false;
+                if (!partes.length) return true;
+                const s = e.s;
+                const pajar = sgcSolNorm([e.nombre, e.cedula, s.repNombre, s.repCedula, s.motivo, s.etiqueta, s.motivoRespuesta].join(' '));
+                return partes.every(p => pajar.includes(p));
+            });
+        }
+        function sgcSolOrdenar(lista) {
+            const ms = (e) => { const f = nptParseFecha(e.s.fecha); return f ? f.getTime() : 0; };
+            const out = lista.slice();
+            if (sgcSol.orden === 'antiguas') out.sort((a, b) => ms(a) - ms(b));
+            else if (sgcSol.orden === 'nombre') out.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            else out.sort((a, b) => ms(b) - ms(a));
+            return out;
+        }
+        function sgcSolActualizarOpciones(todas) {
+            const selG = document.getElementById('sgc-sol-grupo'), selT = document.getElementById('sgc-sol-trim');
+            if (!selG || !selT) return;
+            const grupos = [...new Set(todas.map(e => `${e.curso}|${e.paralelo}`))].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+            const sigG = grupos.join('~');
+            if (selG._sig !== sigG) {
+                selG.innerHTML = '<option value="">Todos los cursos</option>' + grupos.map(g => {
+                    const [c, p] = g.split('|');
+                    return `<option value="${escapeHtml(g)}">${escapeHtml(c || 'Sin curso')}${p ? ' "' + escapeHtml(p) + '"' : ''}</option>`;
+                }).join('');
+                selG._sig = sigG;
+            }
+            if (sgcSol.grupo && !grupos.includes(sgcSol.grupo)) sgcSol.grupo = '';
+            selG.value = sgcSol.grupo;
+            const nums = [...new Set(todas.map(e => e.num))].sort((a, b) => a - b);
+            const sigT = nums.join('~');
+            if (selT._sig !== sigT) {
+                selT.innerHTML = '<option value="">Todos los trimestres</option>' + nums.map(n => {
+                    const t = trimestresEfectivos().find(x => x.num === n);
+                    return `<option value="${n}">${escapeHtml(t?.label || `Trimestre ${n}`)}</option>`;
+                }).join('');
+                selT._sig = sigT;
+            }
+            if (sgcSol.trim && !nums.map(String).includes(sgcSol.trim)) sgcSol.trim = '';
+            selT.value = sgcSol.trim;
+        }
+        function sgcSolIniciales(nombre) {
+            const p = texto(nombre).replace(/\(.*?\)/g, ' ').trim().split(/\s+/).filter(Boolean);
+            if (!p.length) return '?';
+            return ((p[0][0] || '') + (p.length > 1 ? (p[1][0] || '') : '')).toUpperCase();
+        }
+        function sgcSolTarjeta(e) {
+            const s = e.s, est = sgcSolEstado(s);
+            const t = trimestresEfectivos().find(x => x.num === e.num);
+            const etiquetaEstado = est === 'pendiente' ? '⏳ Pendiente' : (est === 'aprobada' ? '✅ Aprobada' : '❌ Rechazada');
+            const motivo = texto(s.motivo);
+            const largo = motivo.length > 150;
+            const expandido = sgcSol.exp.has(e.key);
+            const chips = [
+                (e.curso || e.paralelo) ? `<span class="sgc-chip">${escapeHtml(e.curso)}${e.paralelo ? ' "' + escapeHtml(e.paralelo) + '"' : ''}</span>` : '',
+                `<span class="sgc-chip">${escapeHtml(t?.label || `Trimestre ${e.num}`)}</span>`,
+                `<span class="sgc-chip">${escapeHtml(s.etiqueta || e.clave)}</span>`,
+                s.entregaNoPresentada ? '<span class="sgc-chip sgc-chip-warn">No presentada</span>' : '',
+                (s.notaOriginal !== null && s.notaOriginal !== undefined && s.notaOriginal !== '') ? `<span class="sgc-chip">Nota original: ${escapeHtml(formatearNota(s.notaOriginal))}</span>` : ''
+            ].join('');
+            const respuesta = est !== 'pendiente' && s.fechaRespuesta
+                ? ` · ${est === 'aprobada' ? 'Aprobada' : 'Rechazada'}: ${escapeHtml(nptFormatoFechaHora(s.fechaRespuesta))}` : '';
+            const acciones = est === 'pendiente'
+                ? `<button type="button" class="sgc-btn sgc-btn-sm sgc-btn-ok" data-act="aprobar">✅ Aprobar</button>
+                   <button type="button" class="sgc-btn sgc-btn-sm sgc-btn-soft-danger" data-act="rechazar">❌ Rechazar</button>`
+                : `<button type="button" class="sgc-btn sgc-btn-sm" data-act="reabrir" title="Devolver la solicitud a Pendiente">↩ Reabrir</button>`;
+            return `<article class="sgc-card${sgcSol.sel.has(e.key) ? ' sgc-sel' : ''}" data-estado="${est}" data-k="${escapeHtml(e.key)}">
+                <div class="sgc-card-top">
+                    <input type="checkbox" data-sel ${sgcSol.sel.has(e.key) ? 'checked' : ''} aria-label="Seleccionar solicitud de ${escapeHtml(e.nombre)}">
+                    <div class="sgc-avatar" aria-hidden="true">${escapeHtml(sgcSolIniciales(e.nombre))}</div>
+                    <div class="sgc-card-id">
+                        <p class="sgc-card-nombre" title="${escapeHtml(e.nombre)}">${escapeHtml(e.nombre)}</p>
+                        <p class="sgc-card-ced">C.I. ${escapeHtml(e.cedula)}</p>
+                    </div>
+                    <span class="sgc-badge sgc-badge-${est}">${etiquetaEstado}</span>
+                </div>
+                <div class="sgc-chips">${chips}</div>
+                <blockquote class="sgc-motivo${expandido ? ' sgc-expandido' : ''}">“${escapeHtml(motivo)}”</blockquote>
+                ${largo ? `<button type="button" class="sgc-link" data-act="expandir">${expandido ? 'Ver menos' : 'Ver más'}</button>` : ''}
+                <p class="sgc-meta">Representante: ${escapeHtml(s.repNombre || '-')} (C.I. ${escapeHtml(s.repCedula || '-')}) · Solicitado: ${escapeHtml(nptFormatoFechaHora(s.fecha))}${respuesta}</p>
+                ${est === 'rechazada' && s.motivoRespuesta ? `<p class="sgc-rechazo"><strong>Motivo de rechazo:</strong> ${escapeHtml(s.motivoRespuesta)}</p>` : ''}
+                <div class="sgc-acciones">
+                    <button type="button" class="sgc-btn sgc-btn-sm sgc-btn-dark" data-act="imprimir">🖨️ Solicitud formal</button>
+                    ${acciones}
+                    <button type="button" class="sgc-btn sgc-btn-sm sgc-btn-soft-danger" data-act="eliminar" title="Eliminar este registro" aria-label="Eliminar solicitud de ${escapeHtml(e.nombre)}">🗑️</button>
+                </div>
+            </article>`;
         }
         function renderSolicitudesRecuperacionNPT() {
+            const win = sgcSolWin();
             const cont = document.getElementById('npt-solicitudes-lista');
-            if (!cont) return;
-            const todas = nptTodasLasSolicitudesRecuperacion();
-            if (todas.length === 0) {
-                cont.innerHTML = `<p class="text-sm text-slate-400 text-center py-8">📭 No hay solicitudes de recuperación registradas todavía.</p>`;
+            if (!win || !cont) return;
+            sgcSolInicializarUI(win);
+            const todas = sgcSolEntradas();
+            sgcSolActualizarOpciones(todas);
+            const base = sgcSolFiltrar(todas);
+            const conteo = { pendiente: 0, aprobada: 0, rechazada: 0, todas: base.length };
+            base.forEach(e => { conteo[sgcSolEstado(e.s)]++; });
+            const defs = [['pendiente', '⏳ Pendientes'], ['aprobada', '✅ Aprobadas'], ['rechazada', '❌ Rechazadas'], ['todas', 'Todas']];
+            document.getElementById('sgc-sol-tabs').innerHTML = defs.map(([k, l]) =>
+                `<button type="button" role="tab" class="sgc-tab" data-tab="${k}" aria-selected="${sgcSol.tab === k}">${l} <span class="sgc-tab-n${k === 'pendiente' && conteo.pendiente > 0 ? ' sgc-n-alerta' : ''}">${conteo[k]}</span></button>`).join('');
+            const visibles = sgcSolOrdenar(sgcSol.tab === 'todas' ? base : base.filter(e => sgcSolEstado(e.s) === sgcSol.tab));
+            // La selección sólo puede contener lo que se ve: nunca se actúa sobre solicitudes ocultas por un filtro.
+            const visiblesKeys = new Set(visibles.map(e => e.key));
+            sgcSol.sel.forEach(k => { if (!visiblesKeys.has(k)) sgcSol.sel.delete(k); });
+            sgcSol.exp.forEach(k => { if (!visiblesKeys.has(k)) sgcSol.exp.delete(k); });
+            const totalPend = todas.filter(e => sgcSolEstado(e.s) === 'pendiente').length;
+            document.getElementById('sgc-sol-resumen').textContent = todas.length
+                ? `${totalPend} pendiente${totalPend === 1 ? '' : 's'} · ${todas.length - totalPend} resuelta${todas.length - totalPend === 1 ? '' : 's'}`
+                : '';
+            const scroll = cont.scrollTop;
+            if (!visibles.length) {
+                const hayFiltros = !!(sgcSol.q.trim() || sgcSol.grupo || sgcSol.trim);
+                cont.innerHTML = `<div class="sgc-vacio"><b>${todas.length ? 'Sin resultados' : '📭 Sin solicitudes'}</b>${
+                    !todas.length ? 'No hay solicitudes de recuperación registradas todavía.'
+                    : hayFiltros ? 'Ninguna solicitud coincide con la búsqueda o los filtros.'
+                    : `No hay solicitudes en «${escapeHtml(defs.find(d => d[0] === sgcSol.tab)[1].replace(/^\S+\s/, ''))}».`}${
+                    todas.length ? `<br><button type="button" class="sgc-btn" data-act="${hayFiltros ? 'limpiar' : 'ver-todas'}">${hayFiltros ? 'Quitar filtros' : 'Ver todas'}</button>` : ''}</div>`;
+            } else {
+                cont.innerHTML = visibles.map(sgcSolTarjeta).join('');
+            }
+            cont.scrollTop = scroll;
+            const nSel = sgcSol.sel.size;
+            const seleccion = visibles.filter(e => sgcSol.sel.has(e.key));
+            const nPend = seleccion.filter(e => sgcSolEstado(e.s) === 'pendiente').length;
+            const nRes = seleccion.length - nPend;
+            document.getElementById('sgc-sol-bulk').innerHTML = `
+                <label><input type="checkbox" id="sgc-sol-todos" ${visibles.length ? '' : 'disabled'}> Seleccionar todas (${visibles.length})</label>
+                <span>${nSel ? `${nSel} seleccionada${nSel === 1 ? '' : 's'}` : 'Ninguna seleccionada'}</span>
+                <div class="sgc-sp">
+                    <button type="button" class="sgc-btn sgc-btn-sm sgc-btn-ok" data-act="bulk-aprobar" ${nPend ? '' : 'disabled'}>✅ Aprobar${nPend ? ` (${nPend})` : ''}</button>
+                    <button type="button" class="sgc-btn sgc-btn-sm sgc-btn-soft-danger" data-act="bulk-rechazar" ${nPend ? '' : 'disabled'}>❌ Rechazar${nPend ? ` (${nPend})` : ''}</button>
+                    <button type="button" class="sgc-btn sgc-btn-sm" data-act="bulk-reabrir" ${nRes ? '' : 'disabled'}>↩ Reabrir${nRes ? ` (${nRes})` : ''}</button>
+                    <button type="button" class="sgc-btn sgc-btn-sm sgc-btn-soft-danger" data-act="bulk-eliminar" ${nSel ? '' : 'disabled'}>🗑️ Eliminar${nSel ? ` (${nSel})` : ''}</button>
+                    <button type="button" class="sgc-btn sgc-btn-sm" data-act="csv" ${visibles.length ? '' : 'disabled'} title="Descargar lo que se ve en la lista">⬇ CSV</button>
+                </div>`;
+            const todos = document.getElementById('sgc-sol-todos');
+            if (todos) {
+                todos.checked = visibles.length > 0 && nSel === visibles.length;
+                todos.indeterminate = nSel > 0 && nSel < visibles.length;
+            }
+        }
+        function sgcSolInicializarUI(win) {
+            if (sgcSol.listo) return;
+            sgcSol.listo = true;
+            const rer = () => renderSolicitudesRecuperacionNPT();
+            let h = null;
+            win.querySelector('#sgc-sol-q').addEventListener('input', (ev) => {
+                clearTimeout(h);
+                h = setTimeout(() => { sgcSol.q = ev.target.value; rer(); }, 120);
+            });
+            win.querySelector('#sgc-sol-grupo').addEventListener('change', (ev) => { sgcSol.grupo = ev.target.value; rer(); });
+            win.querySelector('#sgc-sol-trim').addEventListener('change', (ev) => { sgcSol.trim = ev.target.value; rer(); });
+            win.querySelector('#sgc-sol-orden').addEventListener('change', (ev) => { sgcSol.orden = ev.target.value; rer(); });
+            win.addEventListener('click', (ev) => {
+                const b = ev.target.closest('[data-act], [data-tab]');
+                if (!b || !win.contains(b)) return;
+                if (b.dataset.tab) { sgcSol.tab = b.dataset.tab; rer(); return; }
+                const card = b.closest('[data-k]');
+                const key = card ? card.dataset.k : null;
+                const sel = [...sgcSol.sel];
+                switch (b.dataset.act) {
+                    case 'imprimir': { const it = key && sgcSolResolver(key); if (it) imprimirSolicitudRecuperacionFormalNPT(it.cedula, it.num, it.clave); break; }
+                    case 'aprobar': if (key) sgcSolAprobar([key]); break;
+                    case 'rechazar': if (key) sgcSolRechazar([key]); break;
+                    case 'reabrir': if (key) sgcSolReabrir([key]); break;
+                    case 'eliminar': if (key) sgcSolEliminar([key]); break;
+                    case 'expandir':
+                        if (key) { if (sgcSol.exp.has(key)) sgcSol.exp.delete(key); else sgcSol.exp.add(key); rer(); }
+                        break;
+                    case 'bulk-aprobar': sgcSolAprobar(sel); break;
+                    case 'bulk-rechazar': sgcSolRechazar(sel); break;
+                    case 'bulk-reabrir': sgcSolReabrir(sel); break;
+                    case 'bulk-eliminar': sgcSolEliminar(sel); break;
+                    case 'csv': sgcSolExportarCSV(); break;
+                    case 'ver-todas': sgcSol.tab = 'todas'; rer(); break;
+                    case 'limpiar':
+                        sgcSol.q = ''; sgcSol.grupo = ''; sgcSol.trim = ''; sgcSol.orden = 'recientes';
+                        win.querySelector('#sgc-sol-q').value = '';
+                        win.querySelector('#sgc-sol-orden').value = 'recientes';
+                        rer();
+                        break;
+                }
+            });
+            win.addEventListener('change', (ev) => {
+                const t = ev.target;
+                if (t.matches && t.matches('[data-sel]')) {
+                    const key = t.closest('[data-k]')?.dataset.k;
+                    if (!key) return;
+                    if (t.checked) sgcSol.sel.add(key); else sgcSol.sel.delete(key);
+                    rer();
+                } else if (t.id === 'sgc-sol-todos') {
+                    win.querySelectorAll('#npt-solicitudes-lista [data-k]').forEach(c => {
+                        if (t.checked) sgcSol.sel.add(c.dataset.k); else sgcSol.sel.delete(c.dataset.k);
+                    });
+                    rer();
+                }
+            });
+        }
+        function abrirSolicitudesRecuperacionModalNPT() {
+            const win = sgcSolWin();
+            if (!win) return;
+            const yaAbierta = !win.classList.contains('hidden');
+            sgcFwAbrir(SGC_SOL_ID);
+            if (!yaAbierta) {
+                const hayPendientes = sgcSolEntradas().some(e => sgcSolEstado(e.s) === 'pendiente');
+                sgcSol.tab = hayPendientes ? 'pendiente' : 'todas';
+                sgcSol.sel.clear();
+            }
+            renderSolicitudesRecuperacionNPT();
+            if (!yaAbierta) win.focus({ preventScroll: true });
+        }
+        function cerrarSolicitudesRecuperacionModalNPT() { sgcFwCerrar(SGC_SOL_ID); }
+
+        // ---- Operaciones sobre solicitudes (cada una persiste en Firebase y luego actualiza la copia local) ----
+        function sgcSolGuardarLocal(cedula, num, clave, registro) {
+            const tk = `trimestre${num}`;
+            if (registro === null) {
+                const porTrim = nptSolicitudesRecuperacion[cedula];
+                if (!porTrim || !porTrim[tk]) return;
+                delete porTrim[tk][clave];
+                if (!Object.keys(porTrim[tk]).length) delete porTrim[tk];
+                if (!Object.keys(porTrim).length) delete nptSolicitudesRecuperacion[cedula];
                 return;
             }
-            const pendientes = todas.filter(s => s.estado === 'pendiente');
-            const resueltas = todas.filter(s => s.estado !== 'pendiente');
-            const tarjeta = (s) => {
-                const t = trimestresEfectivos().find(x => x.num === s.numTrimestre);
-                const colorEstado = s.estado === 'pendiente' ? 'border-amber-300 bg-amber-50' : s.estado === 'aprobada' ? 'border-emerald-300 bg-emerald-50' : 'border-rose-300 bg-rose-50';
-                const badgeEstado = s.estado === 'pendiente' ? '⏳ Pendiente' : s.estado === 'aprobada' ? '✅ Aprobada' : '❌ Rechazada';
-                return `<div class="border rounded-xl p-3 ${colorEstado}">
-                    <div class="flex items-center justify-between flex-wrap gap-1 mb-1">
-                        <p class="text-sm font-bold text-slate-700">${escapeHtml(s.nombre)} <span class="text-xs font-normal text-slate-400">(${escapeHtml(s.cedula)})</span></p>
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border">${badgeEstado}</span>
-                    </div>
-                    <p class="text-xs text-slate-500 mb-1">${escapeHtml(s.curso||'')} "${escapeHtml(s.paralelo||'')}" · ${escapeHtml(t?.label||'')} · ${escapeHtml(s.etiqueta||s.clave)}</p>
-                    <p class="text-xs text-slate-600 italic mb-1">"${escapeHtml(s.motivo||'')}"</p>
-                    <p class="text-[10px] text-slate-400 mb-2">Representante: ${escapeHtml(s.repNombre||'-')} (C.I. ${escapeHtml(s.repCedula||'-')}) · Solicitado: ${escapeHtml(nptFormatoFechaHora(s.fecha))}</p>
-                    ${s.estado === 'rechazada' && s.motivoRespuesta ? `<p class="text-[10px] text-rose-600 mb-2"><strong>Motivo de rechazo:</strong> ${escapeHtml(s.motivoRespuesta)}</p>` : ''}
-                    <button onclick="imprimirSolicitudRecuperacionFormalNPT('${escapeHtml(s.cedula)}',${s.numTrimestre},'${escapeHtml(s.clave)}')" class="w-full mb-2 bg-slate-800 text-white text-xs font-bold py-1.5 rounded-lg hover:bg-slate-900">🖨️ Ver/Imprimir solicitud formal</button>
-                    ${s.estado === 'pendiente' ? `<div class="flex gap-2">
-                        <button onclick="aprobarSolicitudRecuperacionNPT('${escapeHtml(s.cedula)}',${s.numTrimestre},'${escapeHtml(s.clave)}')" class="flex-1 bg-emerald-600 text-white text-xs font-bold py-1.5 rounded-lg hover:bg-emerald-700">✅ Aprobar</button>
-                        <button onclick="rechazarSolicitudRecuperacionNPT('${escapeHtml(s.cedula)}',${s.numTrimestre},'${escapeHtml(s.clave)}')" class="flex-1 bg-rose-600 text-white text-xs font-bold py-1.5 rounded-lg hover:bg-rose-700">❌ Rechazar</button>
-                    </div>` : ''}
-                </div>`;
-            };
-            let html = '';
-            if (pendientes.length) html += `<h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Pendientes (${pendientes.length})</h4>` + pendientes.map(tarjeta).join('');
-            if (resueltas.length) html += `<details class="mt-4"><summary class="text-xs font-bold text-slate-500 uppercase cursor-pointer mb-2">Resueltas (${resueltas.length})</summary>${resueltas.map(tarjeta).join('')}</details>`;
-            cont.innerHTML = html;
+            if (!nptSolicitudesRecuperacion[cedula]) nptSolicitudesRecuperacion[cedula] = {};
+            if (!nptSolicitudesRecuperacion[cedula][tk]) nptSolicitudesRecuperacion[cedula][tk] = {};
+            nptSolicitudesRecuperacion[cedula][tk][clave] = registro;
         }
-        async function aprobarSolicitudRecuperacionNPT(cedula, numTrimestre, clave) {
-            const s = nptSolicitudRecuperacionDe(cedula, numTrimestre, clave);
-            if (!s) return;
-            const esExamen = clave === 'examen';
-            const esTest = !esExamen && nptInsumoEsTest(s.curso, s.paralelo, numTrimestre, clave);
-            const tieneContenido = esExamen
-                ? nptExamenesRecuperacionPreguntas(s.curso, s.paralelo, numTrimestre).length > 0
-                : (esTest
-                    ? nptInsumoPreguntasDe(s.curso, s.paralelo, numTrimestre, nptClaveRecuperacionInsumo(clave)).length > 0
-                    : !!nptRubricaTexto(s.curso, s.paralelo, numTrimestre, nptClaveRecuperacionInsumo(clave)));
-            const advertencia = tieneContenido ? '' : `\n\n⚠️ Ojo: todavía no has registrado ${esExamen || esTest ? 'el banco de preguntas' : 'la rúbrica'} de RECUPERACIÓN de este insumo/examen en "⚙️ Gestionar" — hazlo también para que el estudiante pueda completarla.`;
-            if (!confirm(`¿Aprobar la solicitud de recuperación de "${s.etiqueta}" para ${s.nombre}?\n\nEsto habilitará automáticamente que pueda rendir/entregar la recuperación.${advertencia}`)) return;
-            const authOk = await ensureAuth();
-            try {
-                if (esExamen) {
-                    if (!nptExamenRecuperacionHabilitacionEstudiantes[s.curso]) nptExamenRecuperacionHabilitacionEstudiantes[s.curso] = {};
-                    if (!nptExamenRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo]) nptExamenRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo] = {};
-                    if (!nptExamenRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo][numTrimestre]) nptExamenRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo][numTrimestre] = {};
-                    nptExamenRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo][numTrimestre][cedula] = true;
-                    if (authOk) await guardarValorFirebase(`nptExamenRecuperacionHabilitacionEstudiantes/${s.curso}/${s.paralelo}/${numTrimestre}/${cedula}`, true);
-                } else {
-                    if (!nptInsumoRecuperacionHabilitacionEstudiantes[s.curso]) nptInsumoRecuperacionHabilitacionEstudiantes[s.curso] = {};
-                    if (!nptInsumoRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo]) nptInsumoRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo] = {};
-                    if (!nptInsumoRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo][numTrimestre]) nptInsumoRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo][numTrimestre] = {};
-                    if (!nptInsumoRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo][numTrimestre][clave]) nptInsumoRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo][numTrimestre][clave] = {};
-                    nptInsumoRecuperacionHabilitacionEstudiantes[s.curso][s.paralelo][numTrimestre][clave][cedula] = true;
-                    if (authOk) await guardarValorFirebase(`nptInsumoRecuperacionHabilitacionEstudiantes/${s.curso}/${s.paralelo}/${numTrimestre}/${clave}/${cedula}`, true);
-                }
-                const registro = { ...s, estado: 'aprobada', fechaRespuesta: new Date().toISOString(), docenteRespuesta: 'Ing. César Godoy Rosero, Mgt.' };
-                if (!nptSolicitudesRecuperacion[cedula]) nptSolicitudesRecuperacion[cedula] = {};
-                if (!nptSolicitudesRecuperacion[cedula][`trimestre${numTrimestre}`]) nptSolicitudesRecuperacion[cedula][`trimestre${numTrimestre}`] = {};
-                nptSolicitudesRecuperacion[cedula][`trimestre${numTrimestre}`][clave] = registro;
-                if (authOk) await guardarValorFirebase(`nptSolicitudesRecuperacion/${cedula}/trimestre${numTrimestre}/${clave}`, registro);
-                renderSolicitudesRecuperacionNPT();
-                actualizarBadgeSolicitudesRecuperacionNPT();
-                renderNPTDocente();
-                await registrarAuditoria('aprobar_solicitud_recuperacion', `Solicitud de recuperación aprobada: ${s.nombre} (${cedula}) — T${numTrimestre}/${clave}.`);
-                alert('✅ Solicitud aprobada. El estudiante ya puede rendir/entregar la recuperación.');
-            } catch(e) {
-                console.error(e);
-                alert('Error al aprobar la solicitud. Revisa la conexión e intenta de nuevo.');
-            }
+        function sgcSolRutaHabilitacion(it) {
+            const { curso, paralelo, num, clave, cedula } = it;
+            if (!curso || !paralelo) throw new Error('La solicitud no tiene curso/paralelo y el estudiante no está en la nómina.');
+            return clave === 'examen'
+                ? { ruta: `nptExamenRecuperacionHabilitacionEstudiantes/${curso}/${paralelo}/${num}/${cedula}`, base: nptExamenRecuperacionHabilitacionEstudiantes, camino: [curso, paralelo, num] }
+                : { ruta: `nptInsumoRecuperacionHabilitacionEstudiantes/${curso}/${paralelo}/${num}/${clave}/${cedula}`, base: nptInsumoRecuperacionHabilitacionEstudiantes, camino: [curso, paralelo, num, clave] };
         }
-        async function rechazarSolicitudRecuperacionNPT(cedula, numTrimestre, clave) {
-            const s = nptSolicitudRecuperacionDe(cedula, numTrimestre, clave);
-            if (!s) return;
-            const motivo = prompt(`❌ Rechazar solicitud de recuperación de "${s.etiqueta}" para ${s.nombre}\n\nEscribe el motivo del rechazo (lo verá el representante/estudiante):`);
-            if (motivo === null) return;
-            if (!motivo.trim()) { alert('El motivo del rechazo es obligatorio.'); return; }
-            const authOk = await ensureAuth();
-            try {
-                const registro = { ...s, estado: 'rechazada', fechaRespuesta: new Date().toISOString(), docenteRespuesta: 'Ing. César Godoy Rosero, Mgt.', motivoRespuesta: motivo.trim() };
-                if (!nptSolicitudesRecuperacion[cedula]) nptSolicitudesRecuperacion[cedula] = {};
-                if (!nptSolicitudesRecuperacion[cedula][`trimestre${numTrimestre}`]) nptSolicitudesRecuperacion[cedula][`trimestre${numTrimestre}`] = {};
-                nptSolicitudesRecuperacion[cedula][`trimestre${numTrimestre}`][clave] = registro;
-                if (authOk) await guardarValorFirebase(`nptSolicitudesRecuperacion/${cedula}/trimestre${numTrimestre}/${clave}`, registro);
-                renderSolicitudesRecuperacionNPT();
-                actualizarBadgeSolicitudesRecuperacionNPT();
-                await registrarAuditoria('rechazar_solicitud_recuperacion', `Solicitud de recuperación rechazada: ${s.nombre} (${cedula}) — T${numTrimestre}/${clave}. Motivo: ${motivo.trim().slice(0,120)}`);
-                alert('Solicitud rechazada. El estudiante verá el motivo.');
-            } catch(e) {
-                console.error(e);
-                alert('Error al rechazar la solicitud. Revisa la conexión e intenta de nuevo.');
+        function sgcSolTieneContenido(it) {
+            const { curso, paralelo, num, clave } = it;
+            if (clave === 'examen') return nptExamenesRecuperacionPreguntas(curso, paralelo, num).length > 0;
+            if (nptInsumoEsTest(curso, paralelo, num, clave)) return nptInsumoPreguntasDe(curso, paralelo, num, nptClaveRecuperacionInsumo(clave)).length > 0;
+            return !!nptRubricaTexto(curso, paralelo, num, nptClaveRecuperacionInsumo(clave));
+        }
+        function sgcSolRecuperacionYaRendida(it) {
+            return notaNPTDe(it.cedula, it.num, claveRecuperacionNPT(it.clave)) !== null;
+        }
+        const SGC_DOCENTE_RESPUESTA = 'Ing. César Godoy Rosero, Mgt.';
+        async function sgcSolEjecutarAprobacion(it) {
+            const h = sgcSolRutaHabilitacion(it);
+            await guardarValorFirebase(h.ruta, true);
+            let nodo = h.base;
+            h.camino.forEach(k => { if (!nodo[k] || typeof nodo[k] !== 'object') nodo[k] = {}; nodo = nodo[k]; });
+            nodo[it.cedula] = true;
+            const registro = { ...it.s, estado: 'aprobada', fechaRespuesta: new Date().toISOString(), docenteRespuesta: SGC_DOCENTE_RESPUESTA };
+            delete registro.motivoRespuesta;
+            await guardarValorFirebase(`nptSolicitudesRecuperacion/${it.cedula}/trimestre${it.num}/${it.clave}`, registro);
+            sgcSolGuardarLocal(it.cedula, it.num, it.clave, registro);
+        }
+        async function sgcSolEjecutarRechazo(it, motivo) {
+            const registro = { ...it.s, estado: 'rechazada', fechaRespuesta: new Date().toISOString(), docenteRespuesta: SGC_DOCENTE_RESPUESTA, motivoRespuesta: motivo };
+            await guardarValorFirebase(`nptSolicitudesRecuperacion/${it.cedula}/trimestre${it.num}/${it.clave}`, registro);
+            sgcSolGuardarLocal(it.cedula, it.num, it.clave, registro);
+        }
+        async function sgcSolEjecutarReapertura(it) {
+            if (sgcSolEstado(it.s) === 'aprobada') {
+                // Al reabrir una solicitud aprobada se revoca la habilitación que había concedido.
+                const h = sgcSolRutaHabilitacion(it);
+                await borrarValorFirebase(h.ruta);
+                let nodo = h.base;
+                for (const k of h.camino) { nodo = nodo && nodo[k]; if (!nodo) break; }
+                if (nodo && typeof nodo === 'object') delete nodo[it.cedula];
             }
+            const registro = { ...it.s, estado: 'pendiente' };
+            delete registro.fechaRespuesta; delete registro.docenteRespuesta; delete registro.motivoRespuesta;
+            await guardarValorFirebase(`nptSolicitudesRecuperacion/${it.cedula}/trimestre${it.num}/${it.clave}`, registro);
+            sgcSolGuardarLocal(it.cedula, it.num, it.clave, registro);
+        }
+        async function sgcSolEjecutarEliminacion(it) {
+            await borrarValorFirebase(`nptSolicitudesRecuperacion/${it.cedula}/trimestre${it.num}/${it.clave}`);
+            sgcSolGuardarLocal(it.cedula, it.num, it.clave, null);
+        }
+        async function sgcSolProcesar(items, fn) {
+            let ok = 0;
+            const fallos = [];
+            for (const it of items) {
+                try { await fn(it); ok++; }
+                catch (e) { console.error('[Solicitudes de recuperación]', e); fallos.push(it); }
+            }
+            return { ok, fallos };
+        }
+        function sgcSolRefrescar() {
+            renderSolicitudesRecuperacionNPT();
+            actualizarBadgeSolicitudesRecuperacionNPT();
+            try { renderNPTDocente(); } catch (e) { console.warn(e); }
+        }
+        async function sgcSolAuditar(accion, detalle) {
+            try { await registrarAuditoria(accion, detalle); } catch (e) { console.warn('Auditoría no registrada:', e); }
+        }
+        async function sgcSolHayNube(win) {
+            const ok = await ensureAuth();
+            if (!ok) sgcFwToast(win, '⚠️ Sin conexión con la nube: no se realizó ningún cambio.', 'error');
+            return ok;
+        }
+        function sgcSolResumen(items) {
+            const nombres = items.slice(0, 3).map(i => i.nombre).join(', ');
+            return items.length > 3 ? `${nombres} y ${items.length - 3} más` : nombres;
+        }
+        function sgcSolTextoResultado(verbo, r) {
+            const base = `${r.ok} solicitud${r.ok === 1 ? '' : 'es'} ${verbo}${r.ok === 1 ? '' : 's'}`;
+            return r.fallos.length ? `⚠️ ${base}; ${r.fallos.length} con error (revisa la conexión)` : `✅ ${base}`;
+        }
+        async function sgcSolAprobar(keys) {
+            const win = sgcSolWin();
+            const items = keys.map(sgcSolResolver).filter(it => it && sgcSolEstado(it.s) === 'pendiente');
+            if (!items.length) { sgcFwToast(win, 'No hay solicitudes pendientes en la selección.', 'info'); return; }
+            const sinBanco = items.filter(it => !sgcSolTieneContenido(it));
+            const unico = items.length === 1;
+            const r = await sgcFwDialogo(win, {
+                tipo: 'ok',
+                titulo: unico ? 'Aprobar solicitud' : `Aprobar ${items.length} solicitudes`,
+                mensaje: unico
+                    ? `¿Aprobar la recuperación de «${items[0].s.etiqueta || items[0].clave}» para ${items[0].nombre}?\nEsto habilitará automáticamente que pueda rendir/entregar la recuperación.`
+                    : `Se habilitará la recuperación de ${items.length} estudiantes (${sgcSolResumen(items)}).`,
+                extraHtml: sinBanco.length
+                    ? `<p class="sgc-aviso">⚠️ ${sinBanco.length === 1 ? 'Todavía no has registrado el banco de preguntas o la rúbrica de RECUPERACIÓN de esta evaluación' : `Hay ${sinBanco.length} solicitudes cuya evaluación aún no tiene banco de preguntas o rúbrica de RECUPERACIÓN`} en «⚙️ Gestionar». Regístralo también para que el estudiante pueda completarla.</p>` : '',
+                textoConfirmar: 'Aprobar'
+            });
+            if (!r.ok || !(await sgcSolHayNube(win))) return;
+            const res = await sgcSolProcesar(items, sgcSolEjecutarAprobacion);
+            sgcSolRefrescar();
+            sgcFwToast(win, sgcSolTextoResultado('aprobada', res), res.fallos.length ? 'error' : 'ok');
+            if (res.ok) await sgcSolAuditar('aprobar_solicitud_recuperacion', `Solicitudes de recuperación aprobadas (${res.ok}): ${sgcSolResumen(items)}.`);
+        }
+        async function sgcSolRechazar(keys) {
+            const win = sgcSolWin();
+            const items = keys.map(sgcSolResolver).filter(it => it && sgcSolEstado(it.s) === 'pendiente');
+            if (!items.length) { sgcFwToast(win, 'No hay solicitudes pendientes en la selección.', 'info'); return; }
+            const unico = items.length === 1;
+            const r = await sgcFwDialogo(win, {
+                tipo: 'danger',
+                titulo: unico ? 'Rechazar solicitud' : `Rechazar ${items.length} solicitudes`,
+                mensaje: unico
+                    ? `Rechazar la recuperación de «${items[0].s.etiqueta || items[0].clave}» de ${items[0].nombre}. El motivo lo verá el representante/estudiante.`
+                    : `Se rechazarán ${items.length} solicitudes (${sgcSolResumen(items)}) con el mismo motivo. Lo verán los representantes/estudiantes.`,
+                motivo: { etiqueta: 'Motivo del rechazo', placeholder: 'Escribe el motivo…', requerido: true },
+                textoConfirmar: 'Rechazar'
+            });
+            if (!r.ok || !(await sgcSolHayNube(win))) return;
+            const res = await sgcSolProcesar(items, (it) => sgcSolEjecutarRechazo(it, r.motivo));
+            sgcSolRefrescar();
+            sgcFwToast(win, sgcSolTextoResultado('rechazada', res), res.fallos.length ? 'error' : 'ok');
+            if (res.ok) await sgcSolAuditar('rechazar_solicitud_recuperacion', `Solicitudes de recuperación rechazadas (${res.ok}): ${sgcSolResumen(items)}. Motivo: ${r.motivo.slice(0, 120)}`);
+        }
+        async function sgcSolReabrir(keys) {
+            const win = sgcSolWin();
+            const resueltas = keys.map(sgcSolResolver).filter(it => it && sgcSolEstado(it.s) !== 'pendiente');
+            if (!resueltas.length) { sgcFwToast(win, 'No hay solicitudes resueltas en la selección.', 'info'); return; }
+            const bloqueadas = resueltas.filter(it => sgcSolEstado(it.s) === 'aprobada' && sgcSolRecuperacionYaRendida(it));
+            const items = resueltas.filter(it => !bloqueadas.includes(it));
+            if (!items.length) {
+                sgcFwToast(win, 'El estudiante ya rindió/entregó la recuperación: no se puede reabrir esa solicitud.', 'error');
+                return;
+            }
+            const aprobadas = items.filter(it => sgcSolEstado(it.s) === 'aprobada').length;
+            const r = await sgcFwDialogo(win, {
+                tipo: 'info',
+                titulo: items.length === 1 ? 'Reabrir solicitud' : `Reabrir ${items.length} solicitudes`,
+                mensaje: `Las solicitudes volverán al estado Pendiente para que las revises de nuevo.${aprobadas ? `\nLas ${aprobadas === 1 ? 'aprobada' : aprobadas + ' aprobadas'} perderán la habilitación de recuperación que concedieron.` : ''}`,
+                extraHtml: bloqueadas.length ? `<p class="sgc-aviso">${bloqueadas.length} solicitud${bloqueadas.length === 1 ? '' : 'es'} aprobada${bloqueadas.length === 1 ? '' : 's'} no se reabrirá${bloqueadas.length === 1 ? '' : 'n'}: el estudiante ya rindió/entregó la recuperación.</p>` : '',
+                textoConfirmar: 'Reabrir'
+            });
+            if (!r.ok || !(await sgcSolHayNube(win))) return;
+            const res = await sgcSolProcesar(items, sgcSolEjecutarReapertura);
+            sgcSolRefrescar();
+            sgcFwToast(win, sgcSolTextoResultado('reabierta', res), res.fallos.length ? 'error' : 'ok');
+            if (res.ok) await sgcSolAuditar('reabrir_solicitud_recuperacion', `Solicitudes de recuperación reabiertas (${res.ok}): ${sgcSolResumen(items)}.`);
+        }
+        async function sgcSolEliminar(keys) {
+            const win = sgcSolWin();
+            const items = keys.map(sgcSolResolver).filter(Boolean);
+            if (!items.length) return;
+            const hayAprobadas = items.some(it => sgcSolEstado(it.s) === 'aprobada');
+            const hayPendientes = items.some(it => sgcSolEstado(it.s) === 'pendiente');
+            const r = await sgcFwDialogo(win, {
+                tipo: 'danger',
+                titulo: items.length === 1 ? 'Eliminar solicitud' : `Eliminar ${items.length} solicitudes`,
+                mensaje: items.length === 1
+                    ? `Se eliminará el registro de la solicitud de ${items[0].nombre} (${items[0].s.etiqueta || items[0].clave}). Esta acción no se puede deshacer.`
+                    : `Se eliminarán ${items.length} registros de solicitudes (${sgcSolResumen(items)}). Esta acción no se puede deshacer.`,
+                extraHtml: (hayAprobadas ? '<p class="sgc-aviso">La habilitación de recuperación ya concedida no se modifica. Si quieres revocarla, usa «Reabrir».</p>' : '')
+                    + (hayPendientes ? '<p class="sgc-aviso">Al eliminar una solicitud pendiente, el estudiante podrá enviar una nueva.</p>' : ''),
+                textoConfirmar: 'Eliminar'
+            });
+            if (!r.ok || !(await sgcSolHayNube(win))) return;
+            const res = await sgcSolProcesar(items, sgcSolEjecutarEliminacion);
+            sgcSolRefrescar();
+            sgcFwToast(win, sgcSolTextoResultado('eliminada', res), res.fallos.length ? 'error' : 'ok');
+            if (res.ok) await sgcSolAuditar('eliminar_solicitud_recuperacion', `Solicitudes de recuperación eliminadas (${res.ok}): ${sgcSolResumen(items)}.`);
+        }
+        // Compatibilidad con llamadas anteriores (cédula, trimestre, clave).
+        function aprobarSolicitudRecuperacionNPT(cedula, numTrimestre, clave) { return sgcSolAprobar([`${cedula}|${numTrimestre}|${clave}`]); }
+        function rechazarSolicitudRecuperacionNPT(cedula, numTrimestre, clave) { return sgcSolRechazar([`${cedula}|${numTrimestre}|${clave}`]); }
+
+        // Exporta a CSV exactamente lo que se ve en la lista (respeta pestaña, búsqueda, filtros y orden).
+        function sgcSolExportarCSV() {
+            const win = sgcSolWin();
+            const base = sgcSolFiltrar(sgcSolEntradas());
+            const filas = sgcSolOrdenar(sgcSol.tab === 'todas' ? base : base.filter(e => sgcSolEstado(e.s) === sgcSol.tab));
+            if (!filas.length) { sgcFwToast(win, 'No hay solicitudes para exportar.', 'info'); return; }
+            // Evita que Excel interprete como fórmula un texto escrito por el representante (=, +, -, @).
+            const seguro = (v) => { const x = texto(v); return csvCampo(/^[=+\-@\t\r]/.test(x) ? "'" + x : x); };
+            let csv = 'Estudiante,Cédula,Curso,Paralelo,Trimestre,Evaluación,Estado,Nota original,Motivo,Representante,Cédula representante,Fecha solicitud,Fecha respuesta,Motivo de rechazo\n';
+            filas.forEach(e => {
+                const s = e.s;
+                const t = trimestresEfectivos().find(x => x.num === e.num);
+                csv += [
+                    e.nombre, e.cedula, e.curso, e.paralelo, t?.label || `Trimestre ${e.num}`, s.etiqueta || e.clave, sgcSolEstado(s),
+                    (s.notaOriginal !== null && s.notaOriginal !== undefined && s.notaOriginal !== '') ? formatearNota(s.notaOriginal) : '',
+                    s.motivo, s.repNombre, s.repCedula, nptFormatoFechaHora(s.fecha), s.fechaRespuesta ? nptFormatoFechaHora(s.fechaRespuesta) : '', s.motivoRespuesta
+                ].map(seguro).join(',') + '\n';
+            });
+            descargarArchivo(`solicitudes_recuperacion_${fechaArchivo()}.csv`, csv, 'text/csv;charset=utf-8');
+            sgcFwToast(win, `⬇ ${filas.length} solicitud${filas.length === 1 ? '' : 'es'} exportada${filas.length === 1 ? '' : 's'}`, 'ok');
         }
 
         // ==================== Monitoreo docente de exámenes bloqueados (tiempo real) ====================
@@ -10075,18 +10951,168 @@ video {
             descargarArchivo(`reporte_trimestre_${t.num}_${fechaArchivo()}.csv`, csv, 'text/csv;charset=utf-8');
         }
 
+        // ==================== Reporte Individual: ventana flotante con acceso a TODOS los estudiantes ====================
+        // Sustituye al antiguo prompt() numerado (que el navegador truncaba y no permitía buscar ni moverse).
+        // Curso, paralelo y trimestre se eligen dentro de la ventana; el reporte se genera con generarReporteNPTIndividualPara().
+        const SGC_REPIND_ID = 'sgc-rep-ind-win';
+        const sgcRepInd = { curso: '', paralelo: '', trim: 0, q: '', activo: null, visibles: [], listo: false };
+        function sgcRepIndWin() { return document.getElementById(SGC_REPIND_ID); }
+        function sgcRepIndBase() {
+            const periodo = cfgPeriodoActivo?.nombre;
+            return estudiantes.filter(e => !periodo || !e.periodoId || e.periodoId === periodo);
+        }
+        function sgcRepIndId(cedula) { return 'sgc-repind-row-' + String(cedula).replace(/[^A-Za-z0-9_-]/g, '_'); }
+        function sgcRepIndSelectores() {
+            const base = sgcRepIndBase();
+            const cursos = [...new Set(base.map(e => e.curso).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+            if (sgcRepInd.curso && !cursos.includes(sgcRepInd.curso)) sgcRepInd.curso = '';
+            const paralelos = [...new Set(base.filter(e => !sgcRepInd.curso || e.curso === sgcRepInd.curso).map(e => e.paralelo).filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+            if (sgcRepInd.paralelo && !paralelos.includes(sgcRepInd.paralelo)) sgcRepInd.paralelo = '';
+            const win = sgcRepIndWin();
+            win.querySelector('#sgc-repind-curso').innerHTML = '<option value="">Todos</option>' + cursos.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+            win.querySelector('#sgc-repind-paralelo').innerHTML = '<option value="">Todos</option>' + paralelos.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+            const trims = trimestresEfectivos();
+            win.querySelector('#sgc-repind-trim').innerHTML = trims.map(t => `<option value="${t.num}">${escapeHtml(t.label)}${t.meses ? ' (' + escapeHtml(t.meses) + ')' : ''}</option>`).join('');
+            if (!trims.some(t => t.num === sgcRepInd.trim)) sgcRepInd.trim = trims[0]?.num || 1;
+            win.querySelector('#sgc-repind-curso').value = sgcRepInd.curso;
+            win.querySelector('#sgc-repind-paralelo').value = sgcRepInd.paralelo;
+            win.querySelector('#sgc-repind-trim').value = String(sgcRepInd.trim);
+        }
+        function sgcRepIndMarcar(cedula, desplazar) {
+            sgcRepInd.activo = cedula;
+            const win = sgcRepIndWin();
+            const lista = win.querySelector('#sgc-repind-lista');
+            let activa = null;
+            lista.querySelectorAll('[role="option"]').forEach(r => {
+                const on = r.dataset.ced === cedula;
+                r.setAttribute('aria-selected', on ? 'true' : 'false');
+                if (on) activa = r;
+            });
+            if (activa) {
+                lista.setAttribute('aria-activedescendant', activa.id);
+                if (desplazar && activa.scrollIntoView) activa.scrollIntoView({ block: 'nearest' });
+            } else {
+                lista.removeAttribute('aria-activedescendant');
+            }
+            win.querySelector('#sgc-repind-generar').disabled = !activa;
+        }
+        function sgcRepIndRender() {
+            const win = sgcRepIndWin();
+            if (!win) return;
+            const lista = win.querySelector('#sgc-repind-lista');
+            const partes = sgcSolNorm(sgcRepInd.q).trim().split(/\s+/).filter(Boolean);
+            // La numeración sigue el orden de la nómina del curso/paralelo elegido (no cambia al buscar).
+            const delGrupo = sgcRepIndBase().filter(e => (!sgcRepInd.curso || e.curso === sgcRepInd.curso) && (!sgcRepInd.paralelo || e.paralelo === sgcRepInd.paralelo));
+            const numerados = delGrupo.map((e, i) => ({ e, n: i + 1 }));
+            const vis = partes.length ? numerados.filter(({ e }) => { const p = sgcSolNorm(`${e.nombre} ${e.cedula}`); return partes.every(x => p.includes(x)); }) : numerados;
+            sgcRepInd.visibles = vis.map(x => x.e.cedula);
+            if (!sgcRepInd.visibles.includes(sgcRepInd.activo)) sgcRepInd.activo = sgcRepInd.visibles[0] || null;
+            const mostrarGrupo = !sgcRepInd.curso || !sgcRepInd.paralelo;
+            let conNota = 0;
+            const filas = vis.map(({ e, n }) => {
+                const nota = calcularPromedioNPT(e.cedula, sgcRepInd.trim);
+                if (nota !== null) conNota++;
+                const clase = nota === null ? 'nota-badge-SIN' : nota >= 9 ? 'nota-badge-DAR' : nota >= 7 ? 'nota-badge-AAR' : nota >= 4 ? 'nota-badge-PAR' : 'nota-badge-NAR';
+                return `<div class="sgc-row" role="option" id="${sgcRepIndId(e.cedula)}" data-ced="${escapeHtml(e.cedula)}" aria-selected="false">
+                    <span class="sgc-row-n">${n}</span>
+                    <div class="sgc-row-main">
+                        <p class="sgc-row-nombre" title="${escapeHtml(e.nombre)}">${escapeHtml(e.nombre)}</p>
+                        <p class="sgc-row-sub">C.I. ${escapeHtml(e.cedula)}${mostrarGrupo && (e.curso || e.paralelo) ? ` · ${escapeHtml(e.curso || '')}${e.paralelo ? ' "' + escapeHtml(e.paralelo) + '"' : ''}` : ''}</p>
+                    </div>
+                    <span class="sgc-nota ${clase}" title="Nota final del trimestre">${nota === null ? 'Sin nota' : escapeHtml(formatearNota(nota))}</span>
+                    <button type="button" class="sgc-btn sgc-btn-sm" data-gen aria-label="Generar reporte de ${escapeHtml(e.nombre)}">📄</button>
+                </div>`;
+            });
+            lista.innerHTML = filas.length ? filas.join('') : `<div class="sgc-vacio"><b>Sin estudiantes</b>${delGrupo.length ? 'Ningún estudiante coincide con la búsqueda.' : 'No hay estudiantes para el curso/paralelo seleccionado.'}</div>`;
+            win.querySelector('#sgc-repind-resumen').innerHTML = `<span><strong>${vis.length}</strong> de ${delGrupo.length} estudiante${delGrupo.length === 1 ? '' : 's'}</span><span>· ${conNota} con nota final</span>`;
+            sgcRepIndMarcar(sgcRepInd.activo, false);
+        }
+        function sgcRepIndGenerar(cedula) {
+            const win = sgcRepIndWin();
+            const est = sgcRepIndBase().find(e => e.cedula === cedula);
+            if (!est) return;
+            const generado = generarReporteNPTIndividualPara(est, sgcRepInd.trim);
+            if (generado) sgcFwToast(win, `📄 Reporte de ${est.nombre} generado`, 'ok');
+        }
+        function sgcRepIndInicializar(win) {
+            if (sgcRepInd.listo) return;
+            sgcRepInd.listo = true;
+            let h = null;
+            win.querySelector('#sgc-repind-q').addEventListener('input', (ev) => {
+                clearTimeout(h);
+                h = setTimeout(() => { sgcRepInd.q = ev.target.value; sgcRepIndRender(); }, 100);
+            });
+            win.querySelector('#sgc-repind-curso').addEventListener('change', (ev) => {
+                sgcRepInd.curso = ev.target.value;
+                sgcRepIndSelectores();
+                sgcRepIndRender();
+            });
+            win.querySelector('#sgc-repind-paralelo').addEventListener('change', (ev) => { sgcRepInd.paralelo = ev.target.value; sgcRepIndRender(); });
+            win.querySelector('#sgc-repind-trim').addEventListener('change', (ev) => { sgcRepInd.trim = parseInt(ev.target.value, 10) || 1; sgcRepIndRender(); });
+            win.querySelector('#sgc-repind-generar').addEventListener('click', () => { if (sgcRepInd.activo) sgcRepIndGenerar(sgcRepInd.activo); });
+            const lista = win.querySelector('#sgc-repind-lista');
+            lista.addEventListener('click', (ev) => {
+                const fila = ev.target.closest('[role="option"]');
+                if (!fila) return;
+                sgcRepIndMarcar(fila.dataset.ced, false);
+                if (ev.target.closest('[data-gen]')) sgcRepIndGenerar(fila.dataset.ced);
+            });
+            lista.addEventListener('dblclick', (ev) => {
+                if (ev.target.closest('[data-gen]')) return; // el botón 📄 ya genera con el primer clic
+                const fila = ev.target.closest('[role="option"]');
+                if (fila) sgcRepIndGenerar(fila.dataset.ced);
+            });
+            // Teclado: ↑ ↓ Inicio Fin RePág AvPág mueven la selección; Enter genera el reporte.
+            win.addEventListener('keydown', (ev) => {
+                const enBusqueda = ev.target.id === 'sgc-repind-q', enLista = ev.target === lista;
+                if (!enBusqueda && !enLista) return;
+                const v = sgcRepInd.visibles;
+                if (!v.length) return;
+                const i = Math.max(0, v.indexOf(sgcRepInd.activo));
+                let j = null;
+                switch (ev.key) {
+                    case 'ArrowDown': j = Math.min(v.length - 1, i + 1); break;
+                    case 'ArrowUp': j = Math.max(0, i - 1); break;
+                    case 'PageDown': j = Math.min(v.length - 1, i + 8); break;
+                    case 'PageUp': j = Math.max(0, i - 8); break;
+                    case 'Home': if (enLista) j = 0; break;
+                    case 'End': if (enLista) j = v.length - 1; break;
+                    case 'Enter':
+                        if (sgcRepInd.activo) { ev.preventDefault(); sgcRepIndGenerar(sgcRepInd.activo); }
+                        return;
+                }
+                if (j !== null) { ev.preventDefault(); sgcRepIndMarcar(v[j], true); }
+            });
+        }
         function generarReporteNPTIndividual() {
-            const alumnos = estudiantesFiltrados();
-            if (!alumnos.length) { alert('No hay estudiantes para el curso/paralelo seleccionado. Usa el filtro de curso/paralelo primero.'); return; }
-            // Pedir selección de estudiante
-            const opciones = alumnos.map((e, i) => `${i+1}. ${e.nombre} — ${e.cedula}`).join('\n');
-            const idxStr = prompt(`Selecciona el estudiante (número):\n\n${opciones}\n\nEscribe el número:`);
-            const idx = parseInt(idxStr, 10) - 1;
-            if (isNaN(idx) || idx < 0 || idx >= alumnos.length) { if (idxStr !== null) alert('Selección inválida.'); return; }
-            const est = alumnos[idx];
-            const numTrim = trimestreActivoParaReportes();
+            const win = sgcRepIndWin();
+            if (!win) return;
+            sgcRepIndInicializar(win);
+            const yaAbierta = !win.classList.contains('hidden');
+            sgcFwAbrir(SGC_REPIND_ID);
+            if (!yaAbierta) {
+                // Parte de los filtros del panel (si hay), pero se pueden cambiar dentro de la ventana.
+                sgcRepInd.curso = cursoActual || '';
+                sgcRepInd.paralelo = paraleloActual || '';
+                sgcRepInd.trim = trimestreActivoParaReportes();
+                sgcRepInd.q = '';
+                sgcRepInd.activo = null;
+                win.querySelector('#sgc-repind-q').value = '';
+            }
+            sgcRepIndSelectores();
+            sgcRepIndRender();
+            if (!yaAbierta) {
+                if (sgcFwMovil()) win.focus({ preventScroll: true });
+                else setTimeout(() => win.querySelector('#sgc-repind-q').focus(), 30);
+            }
+        }
+
+        // Genera (y abre en una pestaña) el reporte individual de un estudiante para un trimestre. Devuelve true si se generó.
+        function generarReporteNPTIndividualPara(est, numTrim) {
+            if (!est) return false;
             const t = trimestresEfectivos().find(x => x.num === numTrim);
-            if (!t) { alert('No se encontró el trimestre seleccionado.'); return; }
+            if (!t) { alert('No se encontró el trimestre seleccionado.'); return false; }
             const periodo = cfgPeriodoActivo?.nombre || 'Período no configurado';
             const formulaTxt = (() => {
                 const f = formulaPromedioEfectiva() || FORMULA_DEFECTO;
@@ -10153,6 +11179,7 @@ video {
             }
 
             abrirODescargarReporte(`Reporte Individual — ${est.nombre} — ${t.label}`, html, `reporte_individual_${est.cedula}_t${t.num}_${fechaArchivo()}.html`);
+            return true;
         }
 
         async function limpiarRegistros() { if(confirm("¿Borrar todas las calificaciones?")) await limpiarCalificaciones(); }
@@ -10186,6 +11213,8 @@ video {
                 cfgTrimestres = (cfg && cfg.trimestres) || null;
                 cfgFormulaPromedio = (cfg && cfg.formulaPromedio) || null;
                 cfgFirmaDocente = (cfg && cfg.firmaDocente) || null;
+                calendarioAcademico = (cfg && cfg.calendarioAcademico) || {};
+                horarioDocente = Array.isArray(cfg && cfg.horarioDocente) ? cfg.horarioDocente.map(x => ({...x, dia: normalizarDiaHorario(x.dia), bloque: Number(x.bloque || HORARIO_BLOQUES.find(b => b.hora === x.hora)?.id || 0), asignatura: String(x.asignatura || '').trim()})).filter(x => HORARIO_DIAS.includes(x.dia) && x.hora && x.curso && x.paralelo) : [];
                 cntAccesosEstudiantes = (cfg && cfg.contadores && cfg.contadores.accesosEstudiantes) || 0;
                 cntAccesosDocente = (cfg && cfg.contadores && cfg.contadores.accesosDocente) || 0;
             } catch(e) {
@@ -10447,6 +11476,36 @@ video {
         }
 
         // ---- Render del tab de configuración ----
+        function organizarConfiguracionProfesional(){
+            const root=document.getElementById('tab-configuracion');
+            if(!root||root.dataset.organizada==='1')return;
+            const sections=[...root.children].filter(el=>el.tagName==='SECTION');
+            if(!sections.length)return;
+            const nav=document.createElement('div');nav.className='sgc-config-nav';nav.innerHTML=`
+                <button type="button" onclick="abrirGrupoConfiguracion('cfg-grupo-1')"><span class="num">1</span><span><strong>Período académico</strong><span>Período activo y trimestres</span></span></button>
+                <button type="button" onclick="abrirGrupoConfiguracion('cfg-grupo-2')"><span class="num">2</span><span><strong>Calendario académico</strong><span>Solo excepciones no laborables</span></span></button>
+                <button type="button" onclick="abrirGrupoConfiguracion('cfg-grupo-3')"><span class="num">3</span><span><strong>Horario académico</strong><span>Asignatura, curso y paralelo</span></span></button>
+                <button type="button" onclick="abrirGrupoConfiguracion('cfg-grupo-4')"><span class="num">4</span><span><strong>Estudiantes y nómina</strong><span>Importación y gestión por curso</span></span></button>
+                <button type="button" onclick="abrirGrupoConfiguracion('cfg-grupo-5')"><span class="num">5</span><span><strong>Evaluación y firma</strong><span>Fórmula y referencia docente</span></span></button>
+                <button type="button" onclick="abrirGrupoConfiguracion('cfg-grupo-6')"><span class="num">6</span><span><strong>Monitoreo y respaldo</strong><span>Accesos, backup y almacenamiento</span></span></button>`;
+            root.insertBefore(nav,root.firstChild);
+            const groups=[
+                {id:'cfg-grupo-1',title:'1. Período académico',icon:'🗓️',meta:'Define el período vigente y los trimestres antes de alimentar calificaciones.',idx:[1]},
+                {id:'cfg-grupo-2',title:'2. Calendario académico',icon:'📅',meta:'Registra únicamente fechas no laborables; lunes a viernes son laborables por defecto.',idx:[2]},
+                {id:'cfg-grupo-3',title:'3. Horario académico',icon:'🕒',meta:'Construye la matriz semanal por asignatura, curso y paralelo.',idx:[3]},
+                {id:'cfg-grupo-4',title:'4. Estudiantes y nómina',icon:'👥',meta:'Carga estudiantes y administra las nóminas por curso y paralelo.',idx:[0,6]},
+                {id:'cfg-grupo-5',title:'5. Evaluación y firma',icon:'🧮',meta:'Configura la fórmula del promedio y la firma de referencia.',idx:[4,5]},
+                {id:'cfg-grupo-6',title:'6. Monitoreo y respaldo',icon:'🛡️',meta:'Accesos, copias de seguridad, diagnóstico y almacenamiento de archivos.',idx:[7,8,9,10,11]}
+            ];
+            groups.forEach((g,gi)=>{
+                const det=document.createElement('details');det.id=g.id;det.className='sgc-config-group';det.open=gi<3;
+                const sum=document.createElement('summary');sum.innerHTML=`<span class="group-title"><span class="group-icon">${g.icon}</span><span><strong>${g.title}</strong><span class="group-meta">${g.meta}</span></span></span><span class="chev">⌄</span>`;det.appendChild(sum);
+                const body=document.createElement('div');body.className='sgc-config-body';g.idx.forEach(i=>{if(sections[i])body.appendChild(sections[i]);});det.appendChild(body);root.appendChild(det);
+            });
+            root.dataset.organizada='1';
+        }
+        function abrirGrupoConfiguracion(id){const el=document.getElementById(id);if(el){el.open=true;el.scrollIntoView({behavior:'smooth',block:'start'});}}
+
         function renderTabConfiguracion() {
             // (A) Período activo
             const inputP = document.getElementById('cfg-periodo-nombre');
@@ -10492,6 +11551,272 @@ video {
             // (C) Nómina por curso/paralelo
             renderCfgNominaSelectores();
             renderCfgNomina();
+            renderCalendarioConfiguracion();
+            renderHorarioMatriz();
+            organizarConfiguracionProfesional();
+        }
+
+
+        // ===== Calendario académico, horario y asistencia =====
+        const ASISTENCIA_DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+        const HORARIO_DIAS = ['lunes','martes','miércoles','jueves','viernes'];
+        const HORARIO_BLOQUES = [
+            {id:1, hora:'07:00-07:40'}, {id:2, hora:'07:40-08:20'},
+            {id:3, hora:'08:20-09:00'}, {id:4, hora:'09:00-09:40'},
+            {id:5, hora:'10:10-10:50'}, {id:6, hora:'10:50-11:30'},
+            {id:7, hora:'11:30-12:05'}, {id:8, hora:'12:05-12:40'}
+        ];
+        function asistenciaDia(fecha) { const d = new Date(`${fecha}T12:00:00`); return ASISTENCIA_DIAS[d.getDay()]; }
+        function normalizarDiaHorario(dia) { return String(dia || '').trim().toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+        function asistenciaEsFinDeSemana(fecha) { const d = new Date(`${fecha}T12:00:00`).getDay(); return d === 0 || d === 6; }
+        function fechaEsLaborable(fecha) { return !!fecha && !asistenciaEsFinDeSemana(fecha) && calendarioAcademico?.[fecha]?.tipo !== 'no-laborable'; }
+        function escaparCSV(valor) { return `"${String(valor ?? '').replace(/"/g, '""')}"`; }
+
+        function actualizarCampoMotivoCalendario() {}
+        function renderCalendarioConfiguracion() {
+            const cont = document.getElementById('cfg-calendario-lista'); if (!cont) return;
+            const fechas = Object.entries(calendarioAcademico || {})
+                .filter(([_, dato]) => dato && dato.tipo === 'no-laborable')
+                .sort(([a],[b]) => a.localeCompare(b));
+            cont.innerHTML = fechas.length ? fechas.map(([fecha, dato]) =>
+                `<div class="flex flex-wrap justify-between gap-2 bg-white border rounded-lg px-3 py-2 text-xs">
+                    <span><strong>${escapeHtml(fecha)}</strong> · <span class="text-rose-700">🔴 No laborable: ${escapeHtml(dato.motivo || 'Sin motivo')}</span></span>
+                    <button onclick="eliminarFechaCalendario('${fecha}')" class="text-rose-600 font-bold" aria-label="Eliminar fecha no laborable ${fecha}">Eliminar</button>
+                </div>`).join('') : '<p class="text-xs text-slate-400">No hay excepciones no laborables registradas. Los lunes a viernes serán laborables automáticamente.</p>';
+        }
+        async function guardarFechaCalendario() {
+            const fecha = document.getElementById('cfg-cal-fecha')?.value;
+            const motivo = document.getElementById('cfg-cal-motivo')?.value.trim() || '';
+            if (!fecha) return alert('Selecciona una fecha.');
+            if (asistenciaEsFinDeSemana(fecha)) return alert('Sábados y domingos ya son considerados no laborables. Registra solamente excepciones de lunes a viernes.');
+            if (!motivo) return alert('Escribe el motivo del día no laborable.');
+            calendarioAcademico = calendarioAcademico || {};
+            const registro = { tipo:'no-laborable', motivo, actualizadoEn:new Date().toISOString() };
+            calendarioAcademico[fecha] = registro;
+            const authOk = await ensureAuth();
+            if (authOk) { try { await guardarValorFirebase(`configuracion/calendarioAcademico/${fecha}`, registro); } catch(e) { console.error(e); return alert('No se pudo guardar la fecha no laborable.'); } }
+            document.getElementById('cfg-cal-motivo').value = '';
+            renderCalendarioConfiguracion(); renderAsistenciaCalendario(); renderAsistenciaLista();
+        }
+        async function eliminarFechaCalendario(fecha) {
+            if (!confirm(`¿Eliminar la excepción no laborable del ${fecha}? La fecha volverá a ser laborable si corresponde a lunes-viernes.`)) return;
+            delete calendarioAcademico[fecha];
+            const authOk = await ensureAuth();
+            if (authOk) { try { await borrarValorFirebase(`configuracion/calendarioAcademico/${fecha}`); } catch(e) { console.error(e); return alert('No se pudo eliminar la fecha.'); } }
+            renderCalendarioConfiguracion(); renderAsistenciaCalendario(); renderAsistenciaLista();
+        }
+
+        function obtenerCursosHorario() {
+            const valores = new Set((estudiantes || []).map(e => String(e.curso || '').trim()).filter(Boolean));
+            ['1°','2°','3°'].forEach(x => valores.add(x));
+            return [...valores].sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
+        }
+        function obtenerParalelosHorario() {
+            const valores = new Set((estudiantes || []).map(e => String(e.paralelo || '').trim()).filter(Boolean));
+            ['A','B','C','D','E','F','G','H','I'].forEach(x => valores.add(x));
+            return [...valores].sort((a,b)=>a.localeCompare(b,'es'));
+        }
+        function obtenerAsignaturasHorario() {
+            const base = ['Matemática','Lengua y Literatura','Física','Química','Biología','Inglés','Historia','Educación Física','Informática Aplicada','Filosofía','Educación para la Ciudadanía'];
+            const usadas = (horarioDocente || []).map(x=>String(x.asignatura||'').trim()).filter(Boolean);
+            return [...new Set([...base,...usadas])].sort((a,b)=>a.localeCompare(b,'es'));
+        }
+        function horarioClave(dia, bloque) { return `${normalizarDiaHorario(dia)}|${String(bloque)}`; }
+        function horarioBuscar(dia, bloque) { return (horarioDocente || []).find(x => horarioClave(x.dia,x.bloque||x.hora) === horarioClave(dia,bloque)); }
+        function renderHorarioMatriz() {
+            const cont=document.getElementById('cfg-horario-matriz'); if(!cont) return;
+            const cols=['lunes','martes','miércoles','jueves','viernes'];
+            const head=cols.map(d=>`<th class="p-2 text-center border-b bg-slate-50 capitalize min-w-40">${d}</th>`).join('');
+            let html=`<table class="min-w-[900px] w-full text-[11px]"><thead><tr><th class="p-2 text-left border-b bg-slate-50 w-32">Bloque / Hora</th>${head}</tr></thead><tbody>`;
+            HORARIO_BLOQUES.forEach(b=>{
+                html+=`<tr><th class="p-2 text-left border-b bg-slate-50 whitespace-nowrap">${b.id}. ${b.hora}</th>`;
+                cols.forEach(d=>{
+                    const x=horarioBuscar(d,b.id);
+                    html+=x
+                        ? `<td class="p-1 border-b border-l align-top"><button type="button" onclick="abrirEditorHorario('${d}',${b.id})" class="w-full text-left rounded-lg border border-brand-100 bg-brand-50 hover:bg-brand-100 p-2 min-h-16"><strong class="block text-brand-800">${escapeHtml(x.asignatura||'Sin asignatura')}</strong><span class="text-slate-600">${escapeHtml(x.curso||'')} ${escapeHtml(x.paralelo||'')}</span><span class="block text-[10px] text-slate-400 mt-1">✎ Editar</span></button></td>`
+                        : `<td class="p-1 border-b border-l"><button type="button" onclick="abrirEditorHorario('${d}',${b.id})" class="w-full min-h-16 rounded-lg border border-dashed border-slate-200 hover:border-brand-300 hover:bg-slate-50 text-slate-400">＋ Agregar</button></td>`;
+                });
+                html+='</tr>';
+                if(b.id===4) html+=`<tr><th class="p-2 text-left bg-slate-100 border-b">RECESO</th><td colspan="5" class="p-2 text-center bg-slate-100 text-slate-500 border-b">🔒 09:40–10:10 · Receso (no seleccionable)</td></tr>`;
+            });
+            html+='</tbody></table>'; cont.innerHTML=html;
+            renderHorarioDocenteResumen();
+        }
+        function renderHorarioDocenteResumen() {
+            const cont = document.getElementById('cfg-horario-resumen'); if (!cont) return;
+            const total=(horarioDocente||[]).length;
+            cont.innerHTML = total ? `<div class="flex flex-wrap items-center gap-2"><span class="font-bold">${total} bloques registrados</span><span class="text-slate-400">·</span><span class="text-slate-500">La asistencia utilizará automáticamente asignatura, curso, paralelo y bloque.</span></div>` : '<p class="text-slate-400">No hay bloques configurados. Selecciona “Agregar” en la matriz.</p>';
+        }
+        function cerrarEditorHorario() { document.getElementById('cfg-horario-modal')?.remove(); }
+        function abrirEditorHorario(diaInicial='', bloqueInicial='') {
+            cerrarEditorHorario();
+            const dias=HORARIO_DIAS, cursos=obtenerCursosHorario(), paralelos=obtenerParalelosHorario(), asignaturas=obtenerAsignaturasHorario();
+            const actual=(diaInicial && bloqueInicial) ? horarioBuscar(diaInicial,bloqueInicial) : null;
+            const dia=actual?.dia || diaInicial || 'lunes', bloque=actual?.bloque || bloqueInicial || 1;
+            const modal=document.createElement('div'); modal.id='cfg-horario-modal'; modal.className='fixed inset-0 z-[100] bg-slate-900/50 flex items-center justify-center p-4';
+            modal.innerHTML=`<div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-auto">
+                <div class="px-5 py-4 border-b flex items-center justify-between"><div><h3 class="font-bold text-base">${actual?'Editar bloque de horario':'Agregar bloque de horario'}</h3><p class="text-[11px] text-slate-500 mt-1">Seleccione día, bloque, asignatura, curso y paralelo.</p></div><button type="button" onclick="cerrarEditorHorario()" class="text-slate-500 text-xl" aria-label="Cerrar">×</button></div>
+                <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label class="text-xs font-bold text-slate-600">Día<select id="hor-ed-dia" class="mt-1 block w-full px-3 py-2 border rounded-lg bg-white"><option value="lunes">Lunes</option><option value="martes">Martes</option><option value="miércoles">Miércoles</option><option value="jueves">Jueves</option><option value="viernes">Viernes</option></select></label>
+                    <label class="text-xs font-bold text-slate-600">Bloque / hora<select id="hor-ed-bloque" class="mt-1 block w-full px-3 py-2 border rounded-lg bg-white">${HORARIO_BLOQUES.map(b=>`<option value="${b.id}">${b.id}. ${b.hora}</option>`).join('')}</select></label>
+                    <label class="text-xs font-bold text-slate-600 md:col-span-2">Asignatura<select id="hor-ed-asignatura" onchange="toggleAsignaturaPersonalizada()" class="mt-1 block w-full px-3 py-2 border rounded-lg bg-white"><option value="">Seleccione una asignatura</option>${asignaturas.map(a=>`<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('')}<option value="__otra__">Otra asignatura...</option></select></label>
+                    <label id="hor-ed-otra-wrap" class="hidden text-xs font-bold text-slate-600 md:col-span-2">Nombre de la asignatura<input id="hor-ed-otra" maxlength="120" class="mt-1 block w-full px-3 py-2 border rounded-lg" placeholder="Escriba el nombre exacto"></label>
+                    <label class="text-xs font-bold text-slate-600">Curso<select id="hor-ed-curso" class="mt-1 block w-full px-3 py-2 border rounded-lg bg-white">${cursos.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}</select></label>
+                    <label class="text-xs font-bold text-slate-600">Paralelo<select id="hor-ed-paralelo" class="mt-1 block w-full px-3 py-2 border rounded-lg bg-white">${paralelos.map(x=>`<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('')}</select></label>
+                </div>
+                <div class="px-5 py-4 bg-slate-50 border-t flex flex-wrap justify-end gap-2"><button type="button" onclick="cerrarEditorHorario()" class="px-4 py-2 border rounded-lg text-xs font-bold">Cancelar</button>${actual?'<button type="button" onclick="eliminarBloqueHorario()" class="px-4 py-2 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold">Eliminar bloque</button>':''}<button type="button" onclick="guardarBloqueHorario()" class="px-4 py-2 bg-brand-600 text-white rounded-lg text-xs font-bold">💾 Guardar bloque</button></div>
+            </div>`;
+            document.body.appendChild(modal);
+            document.getElementById('hor-ed-dia').value=normalizarDiaHorario(dia)==='miercoles'?'miércoles':dia;
+            document.getElementById('hor-ed-bloque').value=String(bloque);
+            if(actual){
+                const sel=document.getElementById('hor-ed-asignatura');
+                const a=actual.asignatura||''; sel.value=[...sel.options].some(o=>o.value===a)?a:'__otra__';
+                if(sel.value==='__otra__'){document.getElementById('hor-ed-otra-wrap').classList.remove('hidden');document.getElementById('hor-ed-otra').value=a;}
+                document.getElementById('hor-ed-curso').value=actual.curso||cursos[0]||''; document.getElementById('hor-ed-paralelo').value=actual.paralelo||paralelos[0]||'';
+            }
+        }
+        function toggleAsignaturaPersonalizada(){ const s=document.getElementById('hor-ed-asignatura'), w=document.getElementById('hor-ed-otra-wrap'); if(s&&w) w.classList.toggle('hidden',s.value!=='__otra__'); }
+        async function guardarBloqueHorario(){
+            const dia=normalizarDiaHorario(document.getElementById('hor-ed-dia')?.value), bloque=Number(document.getElementById('hor-ed-bloque')?.value), sel=document.getElementById('hor-ed-asignatura'), otra=document.getElementById('hor-ed-otra')?.value.trim()||'', asignatura=sel?.value==='__otra__'?otra:(sel?.value||''), curso=document.getElementById('hor-ed-curso')?.value||'', paralelo=document.getElementById('hor-ed-paralelo')?.value||'';
+            if(!HORARIO_DIAS.includes(dia)||!bloque||!asignatura||!curso||!paralelo) return alert('Completa día, bloque, asignatura, curso y paralelo.');
+            if(sel?.value==='__otra__'&&!otra) return alert('Escribe el nombre de la asignatura.');
+            const idx=(horarioDocente||[]).findIndex(x=>horarioClave(x.dia,x.bloque||x.hora)===horarioClave(dia,bloque));
+            const registro={dia,hora:HORARIO_BLOQUES.find(b=>b.id===bloque)?.hora||'',bloque,asignatura,curso,paralelo,actualizadoEn:new Date().toISOString()};
+            if(idx>=0) horarioDocente[idx]=registro; else horarioDocente.push(registro);
+            horarioDocente.sort((a,b)=>HORARIO_DIAS.indexOf(normalizarDiaHorario(a.dia))-HORARIO_DIAS.indexOf(normalizarDiaHorario(b.dia)) || Number(a.bloque||0)-Number(b.bloque||0));
+            const authOk=await ensureAuth();
+            if(authOk){try{await guardarValorFirebase('configuracion/horarioDocente',horarioDocente);}catch(e){console.error(e);return alert('No se pudo guardar el horario.');}}
+            cerrarEditorHorario(); renderHorarioMatriz(); renderAsistenciaLista();
+        }
+        async function eliminarBloqueHorario(){
+            const dia=normalizarDiaHorario(document.getElementById('hor-ed-dia')?.value), bloque=Number(document.getElementById('hor-ed-bloque')?.value);
+            const idx=(horarioDocente||[]).findIndex(x=>horarioClave(x.dia,x.bloque||x.hora)===horarioClave(dia,bloque));
+            if(idx<0) return cerrarEditorHorario();
+            if(!confirm('¿Eliminar este bloque del horario?')) return;
+            horarioDocente.splice(idx,1); const authOk=await ensureAuth();
+            if(authOk){try{await guardarValorFirebase('configuracion/horarioDocente',horarioDocente);}catch(e){console.error(e);return alert('No se pudo actualizar el horario.');}}
+            cerrarEditorHorario(); renderHorarioMatriz(); renderAsistenciaLista();
+        }
+        async function limpiarHorarioDocente(){
+            if(!(horarioDocente||[]).length) return alert('No hay bloques de horario para eliminar.');
+            if(!confirm('¿Eliminar todo el horario configurado? Esta acción no elimina los registros históricos de asistencia.')) return;
+            horarioDocente=[]; const authOk=await ensureAuth();
+            if(authOk){try{await borrarValorFirebase('configuracion/horarioDocente');}catch(e){console.error(e);return alert('No se pudo eliminar el horario.');}}
+            renderHorarioMatriz(); renderAsistenciaLista();
+        }
+
+        function renderAsistenciaCalendario() {
+            // El calendario mensual fue retirado del módulo de asistencia.
+            // Las excepciones no laborables se administran en Configuración > Calendario académico.
+            actualizarEstadoFechaAsistencia();
+        }
+        function asistenciaMoverMes(delta) { return; }
+        async function asistenciaSeleccionarFecha(fecha) {
+            if (!fecha) { asistenciaFechaActiva=''; actualizarEstadoFechaAsistencia(); renderAsistenciaLista(); return; }
+            if (!fechaEsLaborable(fecha)) { asistenciaFechaActiva=''; const f=document.getElementById('asistencia-fecha'); if(f) f.value=fecha; actualizarEstadoFechaAsistencia(); renderAsistenciaLista(); return; }
+            asistenciaFechaActiva=fecha; const f=document.getElementById('asistencia-fecha'); if(f) f.value=fecha; actualizarEstadoFechaAsistencia();
+            await cargarAsistenciaFecha(fecha); await cargarNovedadesEstudianteFecha(fecha); await cargarObservacionesCursoFecha(fecha); renderAsistenciaLista();
+        }
+        function asistenciaSesionId(clase) { return encodeURIComponent(`${clase.curso}|${clase.paralelo}|${clase.hora}`); }
+        async function cargarAsistenciaFecha(fecha) { try { asistenciaRegistros[fecha] = (await leerValorRutaFirebase(`asistencia/${fecha}`)) || {}; } catch(e) { console.warn('No se pudo cargar asistencia',e); asistenciaRegistros[fecha] = {}; } }
+        async function cargarNovedadesEstudianteFecha(fecha){
+            if(!fecha){asistenciaNovedadesEstudiante={};return;}
+            try{asistenciaNovedadesEstudiante[fecha]=(await leerValorRutaFirebase(`asistenciaNovedadesEstudiante/${fecha}`))||{};}
+            catch(e){console.warn('No se pudieron cargar novedades individuales',e);asistenciaNovedadesEstudiante[fecha]={};}
+        }
+        function actualizarEstadoFechaAsistencia(){
+            const el=document.getElementById('asistencia-estado-fecha');
+            const fecha=asistenciaFechaActiva;
+            if(!el)return;
+            if(!fecha){el.className='sgc-assist-status bg-slate-100 text-slate-500 border border-slate-200';el.textContent='Sin fecha seleccionada';return;}
+            const fin=asistenciaEsFinDeSemana(fecha), no=calendarioAcademico?.[fecha]?.tipo==='no-laborable';
+            if(fin){el.className='sgc-assist-status bg-slate-100 text-slate-600 border border-slate-200';el.textContent='⚪ Fin de semana · no laborable';}
+            else if(no){el.className='sgc-assist-status bg-rose-50 text-rose-700 border border-rose-200';el.textContent='🔴 Fecha no laborable · '+(calendarioAcademico[fecha].motivo||'Sin motivo');}
+            else{el.className='sgc-assist-status bg-emerald-50 text-emerald-700 border border-emerald-200';el.textContent='🟢 Fecha laborable automática';}
+        }
+        async function cargarObservacionesCursoFecha(fecha){
+            const el=document.getElementById('asistencia-observacion-curso'), ctx=document.getElementById('asistencia-curso-novedad-contexto'); if(!el||!ctx)return;
+            const c=document.getElementById('asistencia-curso')?.value||'', p=document.getElementById('asistencia-paralelo')?.value||'';
+            if(!c||!p){el.value='';ctx.textContent='Seleccione curso y paralelo para consultar la observación general.';return;}
+            try{const key=encodeURIComponent(`${c}|${p}`);const reg=await leerValorRutaFirebase(`asistenciaNovedadesCurso/${fecha}/${key}`);el.value=reg?.observacion||'';ctx.textContent=`${c} ${p} · ${fecha}`;}catch(e){console.warn('No se pudo cargar observación del curso',e);el.value='';ctx.textContent=`${c} ${p} · ${fecha}`;}
+        }
+        async function guardarObservacionCurso(){
+            const fecha=asistenciaFechaActiva,c=document.getElementById('asistencia-curso')?.value||'',p=document.getElementById('asistencia-paralelo')?.value||'',obs=document.getElementById('asistencia-observacion-curso')?.value.trim()||'';
+            if(!fecha||!fechaEsLaborable(fecha)) return alert('Selecciona una fecha laborable.');
+            if(!c||!p) return alert('Selecciona un curso y un paralelo para registrar la observación del curso.');
+            const registro={fecha,curso:c,paralelo:p,observacion:obs,actualizadoEn:new Date().toISOString()};
+            const key=encodeURIComponent(`${c}|${p}`),authOk=await ensureAuth();
+            if(authOk){try{if(obs) await guardarValorFirebase(`asistenciaNovedadesCurso/${fecha}/${key}`,registro);else await borrarValorFirebase(`asistenciaNovedadesCurso/${fecha}/${key}`);}catch(e){console.error(e);return alert('No se pudo guardar la observación del curso.');}}
+            await registrarAuditoria('novedad_curso',`Observación del curso ${c} ${p} registrada para ${fecha}`); alert('Observación del curso guardada.');
+        }
+        function poblarSelectoresAsistencia() {
+            const curso=document.getElementById('asistencia-curso'), paralelo=document.getElementById('asistencia-paralelo'); if(!curso||!paralelo) return;
+            const oldC=curso.value, oldP=paralelo.value;
+            curso.innerHTML='<option value="">Todos los cursos</option>'+[...new Set(horarioDocente.map(x=>x.curso).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es',{numeric:true})).map(x=>`<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('');
+            paralelo.innerHTML='<option value="">Todos los paralelos</option>'+[...new Set(horarioDocente.map(x=>x.paralelo).filter(Boolean))].sort().map(x=>`<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('');
+            if([...curso.options].some(x=>x.value===oldC)) curso.value=oldC; if([...paralelo.options].some(x=>x.value===oldP)) paralelo.value=oldP;
+        }
+        function estadoAsistenciaSelect(reg){
+            const val=reg?.estado||'presente';
+            return `<select class="asistencia-estado-matriz" data-sesion="${escapeHtml(reg?._sid||'')}" aria-label="Estado de asistencia"><option value="presente" ${val==='presente'?'selected':''}>Presente</option><option value="ausente" ${val==='ausente'?'selected':''}>Ausente</option><option value="atraso" ${val==='atraso'?'selected':''}>Atraso</option><option value="justificado" ${val==='justificado'?'selected':''}>Falta justificada</option></select>`;
+        }
+        function renderAsistenciaLista() {
+            const tbody=document.getElementById('asistencia-tabla'), thead=document.getElementById('asistencia-cabecera'); if(!tbody||!thead)return;
+            poblarSelectoresAsistencia();
+            const fecha=asistenciaFechaActiva,c=document.getElementById('asistencia-curso')?.value||'',p=document.getElementById('asistencia-paralelo')?.value||'';
+            const aviso=document.getElementById('asistencia-aviso'); if(aviso) aviso.classList.add('hidden'); tbody.innerHTML=''; thead.innerHTML=''; actualizarEstadoFechaAsistencia();
+            if(!fecha||!fechaEsLaborable(fecha)){const d=document.getElementById('asistencia-dia-seleccionado');if(d)d.textContent='Seleccione una fecha laborable. La fecha no laborable se administra desde Configuración > Calendario académico.';document.getElementById('asistencia-vacia')?.classList.remove('hidden');return;}
+            const dia=normalizarDiaHorario(asistenciaDia(fecha));
+            const clases=horarioDocente.filter(x=>normalizarDiaHorario(x.dia)===dia&&(!c||x.curso===c)&&(!p||x.paralelo===p)).sort((a,b)=>Number(a.bloque||0)-Number(b.bloque||0));
+            if(!clases.length){const d=document.getElementById('asistencia-dia-seleccionado');if(d)d.textContent=`${fecha} · No hay clases configuradas para los filtros seleccionados.`;document.getElementById('asistencia-vacia')?.classList.remove('hidden');document.getElementById('asistencia-resumen-clases').textContent='';return;}
+            const grupos=[...new Map(clases.map(x=>[`${x.curso}|${x.paralelo}`,{curso:x.curso,paralelo:x.paralelo}])).values()];
+            const grupoPermitido=e=>!c&&!p||grupos.some(g=>g.curso===e.curso&&g.paralelo===e.paralelo);
+            const listaEstudiantes=estudiantes.filter(grupoPermitido).sort((a,b)=>a.curso.localeCompare(b.curso,'es',{numeric:true})||a.paralelo.localeCompare(b.paralelo,'es')||a.nombre.localeCompare(b.nombre,'es'));
+            if(!listaEstudiantes.length){document.getElementById('asistencia-vacia')?.classList.remove('hidden');return;}
+            const d=document.getElementById('asistencia-dia-seleccionado');if(d)d.textContent=`${fecha} · ${clases.length} hora(s) programada(s) · ${listaEstudiantes.length} estudiante(s)`;
+            document.getElementById('asistencia-resumen-clases').textContent=`${clases.length} bloque(s) · ${grupos.length} grupo(s)`;
+            const thClases=clases.map((clase,idx)=>`<th class="text-center min-w-32"><div class="font-bold text-[11px]">${escapeHtml(clase.asignatura||'Sin asignatura')}</div><span class="hora">${escapeHtml(clase.hora)} · ${escapeHtml(clase.curso)} ${escapeHtml(clase.paralelo)}</span></th>`).join('');
+            thead.innerHTML=`<tr><th class="sgc-assist-student text-left"># · Estudiante</th>${thClases}<th class="min-w-60 text-left">Observación / Novedad del estudiante</th></tr>`;
+            tbody.innerHTML=listaEstudiantes.map((e,i)=>{
+                const nov=asistenciaNovedadesEstudiante[fecha]?.[e.cedula]?.observacion||'';
+                const cells=clases.map(clase=>{
+                    if(clase.curso!==e.curso||clase.paralelo!==e.paralelo)return `<td class="sgc-assist-cell sgc-assist-blank">—</td>`;
+                    const sid=asistenciaSesionId(clase),old=asistenciaRegistros[fecha]?.[sid]?.[e.cedula]||{},reg={...old,_sid:sid};
+                    return `<td class="sgc-assist-cell text-center" data-cedula="${escapeHtml(e.cedula)}" data-sesion="${escapeHtml(sid)}">${estadoAsistenciaSelect(reg)}<span class="hora">${escapeHtml(clase.hora)}</span></td>`;
+                }).join('');
+                return `<tr class="border-t" data-cedula="${escapeHtml(e.cedula)}"><td class="sgc-assist-student"><div class="font-bold text-slate-800">${i+1}. ${escapeHtml(e.nombre)}</div><div class="text-[10px] text-slate-500 mt-0.5">${escapeHtml(e.curso)} ${escapeHtml(e.paralelo)}</div></td>${cells}<td class="sgc-assist-novedad"><input maxlength="300" class="asistencia-novedad-estudiante" value="${escapeHtml(nov)}" placeholder="Registrar novedad del estudiante..." aria-label="Observación o novedad de ${escapeHtml(e.nombre)}"></td></tr>`;
+            }).join('');
+            document.getElementById('asistencia-vacia')?.classList.add('hidden');
+        }
+        async function guardarAsistencia() {
+            const fecha=asistenciaFechaActiva; if(!fecha||!fechaEsLaborable(fecha))return alert('Seleccione una fecha laborable.');
+            const filas=[...document.querySelectorAll('#asistencia-tabla tr[data-cedula]')]; if(!filas.length)return alert('No hay estudiantes para guardar.');
+            const authOk=await ensureAuth(),nuevos={...(asistenciaRegistros[fecha]||{})}; asistenciaNovedadesEstudiante[fecha]=asistenciaNovedadesEstudiante[fecha]||{};
+            for(const fila of filas){
+                const cedula=fila.dataset.cedula,est=estudiantes.find(x=>x.cedula===cedula); if(!est)continue;
+                const novedad=fila.querySelector('.asistencia-novedad-estudiante')?.value.trim()||'';
+                const novReg={fecha,cedula,estudiante:est.nombre,curso:est.curso,paralelo:est.paralelo,observacion:novedad,actualizadoEn:new Date().toISOString()};
+                if(novedad)asistenciaNovedadesEstudiante[fecha][cedula]=novReg;else delete asistenciaNovedadesEstudiante[fecha][cedula];
+                if(authOk){try{if(novedad)await guardarValorFirebase(`asistenciaNovedadesEstudiante/${fecha}/${cedula}`,novReg);else await borrarValorFirebase(`asistenciaNovedadesEstudiante/${fecha}/${cedula}`);}catch(e){console.error(e);return alert(`No se pudo guardar la novedad de ${est.nombre}.`);}}
+                for(const sel of fila.querySelectorAll('.asistencia-estado-matriz')){
+                    const sid=sel.dataset.sesion,clase=horarioDocente.find(x=>asistenciaSesionId(x)===sid); if(!clase)continue;
+                    const old=asistenciaRegistros[fecha]?.[sid]?.[cedula]||{};
+                    const reg={...old,estado:sel.value,observacion:novedad,fecha,curso:est.curso,paralelo:est.paralelo,asignatura:clase.asignatura||'',hora:clase.hora||'',actualizadoEn:new Date().toISOString()};
+                    nuevos[sid]=nuevos[sid]||{};nuevos[sid][cedula]=reg;
+                    if(authOk){try{await guardarValorFirebase(`asistencia/${fecha}/${sid}/${cedula}`,reg);}catch(e){console.error(e);return alert(`No se pudo guardar la asistencia de ${est.nombre}.`);}}
+                }
+            }
+            asistenciaRegistros[fecha]=nuevos;await registrarAuditoria('asistencia_novedades',`Asistencia y novedades guardadas para ${filas.length} estudiantes el ${fecha}`);alert('Asistencia y novedades guardadas correctamente.');
+        }
+        async function generarReporteAsistencia() {
+            if(!horarioDocente.length) return alert('Primero configura el horario en Configuración.');
+            const desde=document.getElementById('asistencia-reporte-desde').value,hasta=document.getElementById('asistencia-reporte-hasta').value;if(!desde||!hasta||desde>hasta)return alert('Selecciona un rango de fechas válido.');
+            const fechas=[]; for(let d=new Date(`${desde}T12:00:00`),fin=new Date(`${hasta}T12:00:00`);d<=fin;d.setDate(d.getDate()+1)){const f=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;if(fechaEsLaborable(f))fechas.push(f);}
+            await Promise.all(fechas.map(cargarAsistenciaFecha));
+            const out=[['Fecha','Día','Hora','Asignatura','Curso','Paralelo','Cédula','Estudiante','Estado','Novedad estudiante','Observación curso']];
+            for(const fecha of fechas){for(const clase of horarioDocente.filter(x=>normalizarDiaHorario(x.dia)===normalizarDiaHorario(asistenciaDia(fecha)))){const key=encodeURIComponent(`${clase.curso}|${clase.paralelo}`);let novCurso='';try{const n=await leerValorRutaFirebase(`asistenciaNovedadesCurso/${fecha}/${key}`);novCurso=n?.observacion||'';}catch(e){}for(const est of estudiantes.filter(e=>e.curso===clase.curso&&e.paralelo===clase.paralelo)){const reg=asistenciaRegistros[fecha]?.[asistenciaSesionId(clase)]?.[est.cedula];out.push([fecha,asistenciaDia(fecha),clase.hora,clase.asignatura||'',clase.curso,clase.paralelo,est.cedula,est.nombre,reg?.estado||'Sin registrar',reg?.observacion||'',novCurso]);}}}
+            if(out.length===1)return alert('No hay clases configuradas en el horario dentro del rango seleccionado.');const csv='\uFEFF'+out.map(row=>row.map(escaparCSV).join(',')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`reporte_asistencia_novedades_${desde}_${hasta}.csv`;a.click();URL.revokeObjectURL(url);
         }
 
         // ---- Período activo ----
@@ -11300,6 +12625,22 @@ video {
         window.eliminarEntregaNPT = eliminarEntregaNPT;
         window.renderCuadroGeneral = renderCuadroGeneral;
         window.exportarCuadroGeneralCSV = exportarCuadroGeneralCSV;
+        // Calendario y asistencia
+        window.asistenciaMoverMes = asistenciaMoverMes;
+        window.asistenciaSeleccionarFecha = asistenciaSeleccionarFecha;
+        window.renderAsistenciaLista = renderAsistenciaLista;
+        window.guardarAsistencia = guardarAsistencia;
+        window.generarReporteAsistencia = generarReporteAsistencia;
+        window.guardarFechaCalendario = guardarFechaCalendario;
+        window.eliminarFechaCalendario = eliminarFechaCalendario;
+        window.actualizarCampoMotivoCalendario = actualizarCampoMotivoCalendario;
+        window.abrirEditorHorario = abrirEditorHorario;
+        window.cerrarEditorHorario = cerrarEditorHorario;
+        window.toggleAsignaturaPersonalizada = toggleAsignaturaPersonalizada;
+        window.guardarBloqueHorario = guardarBloqueHorario;
+        window.eliminarBloqueHorario = eliminarBloqueHorario;
+        window.limpiarHorarioDocente = limpiarHorarioDocente;
+        window.guardarObservacionCurso = guardarObservacionCurso;
         // Configuración
         window.renderTabConfiguracion = renderTabConfiguracion;
         window.guardarPeriodoActivo = guardarPeriodoActivo;
@@ -11325,6 +12666,14 @@ video {
         // Reportes NPT
         window.generarReporteNPTPorTrimestre = generarReporteNPTPorTrimestre;
         window.generarReporteNPTIndividual = generarReporteNPTIndividual;
+        window.generarReporteNPTIndividualPara = generarReporteNPTIndividualPara;
+        window.abrirSolicitudesRecuperacionModalNPT = abrirSolicitudesRecuperacionModalNPT;
+        window.cerrarSolicitudesRecuperacionModalNPT = cerrarSolicitudesRecuperacionModalNPT;
+        window.renderSolicitudesRecuperacionNPT = renderSolicitudesRecuperacionNPT;
+        window.aprobarSolicitudRecuperacionNPT = aprobarSolicitudRecuperacionNPT;
+        window.rechazarSolicitudRecuperacionNPT = rechazarSolicitudRecuperacionNPT;
+        window.sgcFwAbrir = sgcFwAbrir;
+        window.sgcFwCerrar = sgcFwCerrar;
         // Auditoría
         window.registrarAuditoria = registrarAuditoria;
 
