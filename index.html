@@ -2428,6 +2428,7 @@ video {
                         </div>
                         <div id="asistencia-aviso" class="hidden mb-3 rounded-lg p-3 text-xs"></div>
                         <div class="flex items-center justify-between gap-2 mb-2"><div class="sgc-assist-help">Cada fila corresponde a un estudiante. Cada columna representa una hora/asignatura del día. Así se evita repetir nombres.</div><div id="asistencia-resumen-clases" class="text-[10px] font-bold text-brand-700"></div></div>
+                        <section class="mb-4 bg-indigo-50 border border-indigo-200 rounded-xl p-4"><div class="flex flex-wrap items-start justify-between gap-2 mb-3"><div><h4 class="font-bold text-sm text-indigo-900">📚 Tema de clase</h4><p class="text-[11px] text-indigo-800">Seleccione el tema de la planificación curricular. Si durante la clase aborda un tema diferente, puede crear y registrar un tema adicional.</p></div><span id="asistencia-trimestre-temas" class="text-[10px] font-bold text-indigo-700"></span></div><div id="asistencia-temas-lista" class="space-y-3"></div></section>
                         <div class="sgc-assist-matrix">
                             <table class="min-w-full text-xs">
                                 <thead id="asistencia-cabecera"></thead>
@@ -2517,7 +2518,15 @@ video {
                         <h5 class="font-bold text-xs text-slate-600 uppercase mb-2">Trimestres del período</h5>
                         <div id="cfg-trimestres-lista" class="space-y-2"></div>
                         <p class="text-[11px] text-slate-400 mt-2">Cada trimestre debe tener un nombre y un rango de fechas. Los cambios se guardan al pulsar "Guardar trimestres".</p>
+                    
+
+                    <section class="bg-slate-50 rounded-xl p-4">
+                        <div class="flex flex-wrap items-start justify-between gap-3 mb-3"><div><h4 class="font-bold text-sm mb-1">📚 Planificaciones curriculares por asignatura</h4><p class="text-[11px] text-slate-500">Carga un archivo JSON para cada combinación <strong>trimestre + curso + asignatura</strong> disponible en el horario. La planificación queda asociada al período académico activo.</p></div><span class="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full px-3 py-1 font-bold">3 trimestres · JSON</span></div>
+                        <div class="p-3 mb-3 bg-white border rounded-lg text-[11px] text-slate-600">💡 El sistema utiliza los temas cargados para sugerir el tema de clase durante la asistencia. <strong>También permite registrar temas adicionales no previstos en la planificación</strong>, sin modificar el JSON original.</div>
+                        <div id="cfg-planificaciones-lista"></div>
                     </section>
+                    </section>
+
 
                     <section class="bg-slate-50 rounded-xl p-4">
                         <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
@@ -3447,9 +3456,9 @@ video {
         let _authRefreshToken = null;
         let _authTokenExpiresAt = 0;
 
-        async function obtenerAuthToken() {
+        async function obtenerAuthToken(forzarRenovacion = false) {
             const ahora = Date.now();
-            if (_authToken && ahora < _authTokenExpiresAt - 60000) return _authToken;
+            if (!forzarRenovacion && _authToken && ahora < _authTokenExpiresAt - 60000) return _authToken;
             try {
                 let resp, datos;
                 if (_authRefreshToken) {
@@ -3459,7 +3468,14 @@ video {
                         body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(_authRefreshToken)}`
                     });
                     datos = await resp.json();
-                    if (!resp.ok) throw new Error(datos?.error?.message || 'No se pudo refrescar el token');
+                    if (!resp.ok) {
+                        // El refresh token puede haber sido invalidado. Forzamos un nuevo
+                        // inicio anónimo en lugar de dejar la aplicación con un token muerto.
+                        _authToken = null;
+                        _authRefreshToken = null;
+                        _authTokenExpiresAt = 0;
+                        throw new Error(datos?.error?.message || 'No se pudo refrescar el token');
+                    }
                     _authToken = datos.id_token;
                     _authRefreshToken = datos.refresh_token;
                     _authTokenExpiresAt = Date.now() + Number(datos.expires_in) * 1000;
@@ -3477,41 +3493,56 @@ video {
                 }
                 return _authToken;
             } catch (e) {
-                console.warn('[Auth] No se pudo obtener token de autenticación anónima:', e.message);
+                console.warn('[Auth] No se pudo obtener token de autenticación:', e.message);
                 return null;
             }
         }
 
-        /** fetch REST sin AbortSignal — timeout via Promise.race para evitar error
-         *  de postMessage en el iframe interno del SDK compat de Firebase */
+        /** REST robusto: adjunta ID token cuando existe y, ante 401, renueva
+         *  la autenticación y reintenta una sola vez. Esto evita que un token
+         *  caducado bloquee una carga de planificación aparentemente correcta. */
         async function fetchFirebase(url, opciones = {}) {
-            const TIMEOUT_MS = 10000;
-            const token = await obtenerAuthToken();
-            if (token) {
-                const sep = url.includes('?') ? '&' : '?';
-                url = `${url}${sep}auth=${token}`;
+            const TIMEOUT_MS = 15000;
+            const ejecutar = async (forzarRenovacion = false) => {
+                let urlFinal = url;
+                const token = await obtenerAuthToken(forzarRenovacion);
+                if (token) {
+                    const sep = urlFinal.includes('?') ? '&' : '?';
+                    urlFinal = `${urlFinal}${sep}auth=${encodeURIComponent(token)}`;
+                }
+                const fetchPromise = fetch(urlFinal, {
+                    cache: 'no-store',
+                    ...opciones,
+                    headers: { 'Content-Type': 'application/json', ...(opciones.headers || {}) }
+                }).then(async resp => {
+                    const texto = await resp.text();
+                    let datos = null;
+                    if (texto && texto !== 'null') {
+                        try { datos = JSON.parse(texto); }
+                        catch (_) { datos = texto; }
+                    }
+                    if (!resp.ok) {
+                        const msg = datos?.error?.message || datos?.error || resp.statusText;
+                        const err = new Error(`RTDB REST ${resp.status}: ${msg}`);
+                        err.status = resp.status;
+                        throw err;
+                    }
+                    return datos;
+                });
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('fetchFirebase: timeout ' + TIMEOUT_MS + 'ms')), TIMEOUT_MS)
+                );
+                return await Promise.race([fetchPromise, timeoutPromise]);
+            };
+            try {
+                return await ejecutar(false);
+            } catch (e) {
+                if (Number(e?.status) === 401) {
+                    console.warn('[FB-REST] 401 recibido; renovando autenticación y reintentando una vez.');
+                    return await ejecutar(true);
+                }
+                throw e;
             }
-            const fetchPromise = fetch(url, {
-                cache: 'no-store',
-                ...opciones,
-                headers: { 'Content-Type': 'application/json', ...(opciones.headers || {}) }
-            }).then(async resp => {
-                const texto = await resp.text();
-                let datos = null;
-                if (texto && texto !== 'null') {
-                    try { datos = JSON.parse(texto); }
-                    catch (_) { datos = texto; }
-                }
-                if (!resp.ok) {
-                    const msg = datos?.error?.message || datos?.error || resp.statusText;
-                    throw new Error(`RTDB REST ${resp.status}: ${msg}`);
-                }
-                return datos;
-            });
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('fetchFirebase: timeout ' + TIMEOUT_MS + 'ms')), TIMEOUT_MS)
-            );
-            return Promise.race([fetchPromise, timeoutPromise]);
         }
 
         async function verificarConexionFirebase() {
@@ -5508,6 +5539,8 @@ video {
         let horarioDocente = [];
         let asistenciaRegistros = {};
         let asistenciaNovedadesEstudiante = {};
+        let asistenciaTemas = {};
+        let planificacionesCurriculares = {};
         let asistenciaMesVisible = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
         let asistenciaFechaActiva = '';
         let cfgTrimestres = null;       // null = usar NPT_TRIMESTRES por defecto
@@ -11213,6 +11246,7 @@ video {
                 cfgTrimestres = (cfg && cfg.trimestres) || null;
                 cfgFormulaPromedio = (cfg && cfg.formulaPromedio) || null;
                 cfgFirmaDocente = (cfg && cfg.firmaDocente) || null;
+                planificacionesCurriculares = (cfg && cfg.planificacionesCurriculares) || {};
                 calendarioAcademico = (cfg && cfg.calendarioAcademico) || {};
                 horarioDocente = Array.isArray(cfg && cfg.horarioDocente) ? cfg.horarioDocente.map(x => ({...x, dia: normalizarDiaHorario(x.dia), bloque: Number(x.bloque || HORARIO_BLOQUES.find(b => b.hora === x.hora)?.id || 0), asignatura: String(x.asignatura || '').trim()})).filter(x => HORARIO_DIAS.includes(x.dia) && x.hora && x.curso && x.paralelo) : [];
                 cntAccesosEstudiantes = (cfg && cfg.contadores && cfg.contadores.accesosEstudiantes) || 0;
@@ -11506,6 +11540,189 @@ video {
         }
         function abrirGrupoConfiguracion(id){const el=document.getElementById(id);if(el){el.open=true;el.scrollIntoView({behavior:'smooth',block:'start'});}}
 
+        // ==================== PLANIFICACIONES CURRICULARES ====================
+        function trimestrePorFecha(fecha) {
+            if (!fecha || !cfgTrimestres) return null;
+            for (let n=1;n<=3;n++){ const t=cfgTrimestres[n]; if(t?.desde&&t?.hasta&&fecha>=t.desde&&fecha<=t.hasta)return n; }
+            return null;
+        }
+        function normalizarTextoPlan(v){return String(v||'').trim().toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');}
+        function nivelCursoPlan(v){
+            const s=normalizarTextoPlan(v).replace(/[^a-z0-9]/g,'');
+            if(/^1(?:ro|ero|do)?/.test(s)||s.includes('primero'))return '1';
+            if(/^2(?:do|ndo)?/.test(s)||s.includes('segundo'))return '2';
+            if(/^3(?:ro|ero)?/.test(s)||s.includes('tercero'))return '3';
+            return '';
+        }
+        function cursoPlanCompatible(a,b){
+            const x=normalizarTextoPlan(a),y=normalizarTextoPlan(b);
+            if(!x||!y)return true;
+            if(x===y)return true;
+            const nx=nivelCursoPlan(x),ny=nivelCursoPlan(y);
+            return !!nx && !!ny && nx===ny;
+        }
+        function metadataPlanificacionJSON(obj){
+            const di=(obj&&obj.datos_informativos&&typeof obj.datos_informativos==='object')?obj.datos_informativos:{};
+            return {
+                periodo: obj?.periodo ?? di?.periodo ?? '',
+                asignatura: obj?.asignatura ?? di?.asignatura ?? '',
+                curso: obj?.grado_curso ?? obj?.curso ?? di?.grado_curso ?? di?.curso ?? '',
+                paralelos: obj?.paralelos ?? di?.paralelos ?? ''
+            };
+        }
+        function periodoPlanificacionClave(){return sanitizarClave(cfgPeriodoActivo?.nombre||'SIN_PERIODO');}
+        function clavePlanificacion(curso,asignatura){return `${sanitizarClave(curso)}__${sanitizarClave(asignatura)}`;}
+        function obtenerParesCursoAsignaturaHorario(){const mapa=new Map();(horarioDocente||[]).forEach(x=>{const curso=String(x.curso||'').trim(),asignatura=String(x.asignatura||'').trim();if(curso&&asignatura)mapa.set(`${curso}|${asignatura}`,{curso,asignatura});});return [...mapa.values()].sort((a,b)=>a.curso.localeCompare(b.curso,'es',{numeric:true})||a.asignatura.localeCompare(b.asignatura,'es'));}
+        function extraerTemasPlanificacion(contenido){const arr=Array.isArray(contenido?.planificacion)?contenido.planificacion:[];return arr.map((x,i)=>({unidad:String(x?.unidad||x?.unidad_nombre||'').trim()||`Unidad ${i+1}`,tema:String(x?.tema||x?.temas||x?.contenido||'').trim()})).filter(x=>x.tema);}
+        function validarPlanificacionJSON(obj,trimestre,asignatura,curso){
+            if(!obj||typeof obj!=='object'||Array.isArray(obj))return 'El JSON debe contener un objeto principal.';
+            if(!Array.isArray(obj.planificacion))return 'El JSON no contiene el arreglo "planificacion" requerido.';
+            const meta=metadataPlanificacionJSON(obj);
+            const periodoTxt=normalizarTextoPlan(meta.periodo);
+            if(periodoTxt){
+                const esperado=normalizarTextoPlan(trimestresEfectivos().find(t=>t.num===trimestre)?.label||`Trimestre ${trimestre}`);
+                const coincide=periodoTxt.includes(String(trimestre))||periodoTxt.includes(esperado.replace(' trimestre',''))||(trimestre===1&&periodoTxt.includes('primer'))||(trimestre===2&&periodoTxt.includes('segundo'))||(trimestre===3&&periodoTxt.includes('tercer'));
+                if(!coincide)return `El archivo indica "${meta.periodo}", pero se está cargando en el Trimestre ${trimestre}.`;
+            }
+            if(meta.asignatura&&normalizarTextoPlan(meta.asignatura)!==normalizarTextoPlan(asignatura))return `El archivo indica la asignatura "${meta.asignatura}", pero se seleccionó "${asignatura}".`;
+            if(meta.curso&&!cursoPlanCompatible(meta.curso,curso))return `El archivo indica el curso "${meta.curso}", pero se seleccionó "${curso}".`;
+            if(!extraerTemasPlanificacion(obj).length)return 'La planificación no contiene temas válidos dentro de "planificacion".';
+            return '';
+        }
+        function obtenerRegistroPlanificacion(trimestre,curso,asignatura){const periodo=planificacionesCurriculares?.[periodoPlanificacionClave()]||{};return periodo?.[String(trimestre)]?.[clavePlanificacion(curso,asignatura)]||null;}
+        function obtenerCursosPlanificacionHorario(){
+            return [...new Set((horarioDocente||[]).map(x=>String(x.curso||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
+        }
+        function obtenerAsignaturasPlanificacionCurso(curso){
+            return [...new Set((horarioDocente||[]).filter(x=>String(x.curso||'').trim()===String(curso||'').trim()).map(x=>String(x.asignatura||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+        }
+        function actualizarAsignaturasPlanificacion(trimestre, curso){
+            const sel=document.getElementById(`cfg-plan-asignatura-${trimestre}`); if(!sel)return;
+            const actual=sel.value;
+            const asignaturas=obtenerAsignaturasPlanificacionCurso(curso);
+            sel.innerHTML='<option value="">Seleccione una asignatura</option>'+asignaturas.map(a=>`<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
+            if(asignaturas.includes(actual))sel.value=actual;
+        }
+        function registrosPlanificacionTrimestre(trimestre){
+            const periodo=planificacionesCurriculares?.[periodoPlanificacionClave()]?.[String(trimestre)]||{};
+            return Object.values(periodo).filter(x=>x&&x.curso&&x.asignatura);
+        }
+        function renderPlanificacionesCurriculares(){
+            const cont=document.getElementById('cfg-planificaciones-lista');if(!cont)return;
+            if(!cfgPeriodoActivo?.nombre){cont.innerHTML='<div class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">⚠️ Primero configura el período académico activo.</div>';return;}
+            const cursos=obtenerCursosPlanificacionHorario();
+            if(!cursos.length){cont.innerHTML='<div class="p-3 bg-white border rounded-lg text-xs text-slate-500">No hay cursos configurados en el horario docente.</div>';return;}
+            const pkey=periodoPlanificacionClave();
+            cont.innerHTML=[1,2,3].map(n=>{
+                const label=trimestresEfectivos().find(t=>t.num===n)?.label||`Trimestre ${n}`;
+                const cursosOpts=cursos.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+                const regs=registrosPlanificacionTrimestre(n);
+                const filas=regs.length?regs.map(reg=>{
+                    const temas=extraerTemasPlanificacion(reg.contenido).length;
+                    return `<div class="flex flex-wrap items-center justify-between gap-2 border rounded-lg p-2 bg-slate-50"><div><strong class="text-[11px] text-slate-800">${escapeHtml(reg.curso)}</strong><span class="text-[11px] text-slate-600"> · ${escapeHtml(reg.asignatura)}</span><div class="text-[10px] text-slate-500">📄 ${escapeHtml(reg.archivoNombre||'archivo.json')} · ${temas} tema(s) · ${escapeHtml(nptFormatoFechaHora(reg.actualizadoEn||reg.fechaCarga))}</div></div><div class="flex gap-1"><button type="button" onclick="verPlanificacionCurricular(${n},${JSON.stringify(reg.curso)},${JSON.stringify(reg.asignatura)})" class="bg-white text-slate-700 border px-2 py-1 rounded text-[10px] font-bold">👁 Ver</button><button type="button" onclick="eliminarPlanificacionCurricular(${n},${JSON.stringify(reg.curso)},${JSON.stringify(reg.asignatura)})" class="bg-rose-50 text-rose-700 border border-rose-200 px-2 py-1 rounded text-[10px] font-bold">🗑 Eliminar</button></div></div>`;
+                }).join(''):'<div class="text-[10px] text-slate-400">No hay planificaciones cargadas en este trimestre.</div>';
+                return `<div class="mb-5 border border-indigo-100 rounded-xl bg-indigo-50/40 p-3"><div class="flex flex-wrap items-center justify-between gap-2 mb-3"><h5 class="font-bold text-xs text-brand-800">${escapeHtml(label)}</h5><span class="text-[10px] text-slate-500">Seleccione la combinación desde el horario</span></div><div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-end"><label class="text-[10px] font-bold text-slate-600">Curso<select id="cfg-plan-curso-${n}" onchange="actualizarAsignaturasPlanificacion(${n},this.value)" class="mt-1 w-full px-2 py-2 border rounded-lg bg-white text-xs"><option value="">Seleccione un curso</option>${cursosOpts}</select></label><label class="text-[10px] font-bold text-slate-600">Asignatura<select id="cfg-plan-asignatura-${n}" class="mt-1 w-full px-2 py-2 border rounded-lg bg-white text-xs"><option value="">Seleccione primero un curso</option></select></label><div><input id="cfg-plan-file-${n}" type="file" accept="application/json,.json" class="block w-full text-[10px] mb-1"><button type="button" onclick="subirPlanificacionCurricularSeleccionada(${n})" class="w-full bg-brand-600 text-white px-3 py-2 rounded-lg text-[10px] font-bold">⬆ Cargar planificación JSON</button><div id="cfg-plan-resultado-${n}"></div></div></div><div class="mt-3"><div class="text-[10px] font-bold text-slate-500 uppercase mb-2">Planificaciones registradas en ${escapeHtml(label)}</div><div class="space-y-2">${filas}</div></div></div>`;
+            }).join('');
+        }
+        async function subirPlanificacionCurricularSeleccionada(trimestre){
+            const curso=document.getElementById(`cfg-plan-curso-${trimestre}`)?.value||'';
+            const asignatura=document.getElementById(`cfg-plan-asignatura-${trimestre}`)?.value||'';
+            const input=document.getElementById(`cfg-plan-file-${trimestre}`);
+            if(!curso)return alert('⚠️ Selecciona el curso correspondiente al horario.');
+            if(!asignatura)return alert('⚠️ Selecciona la asignatura correspondiente al curso.');
+            if(!input?.files?.length)return alert('⚠️ Selecciona el archivo JSON de la planificación curricular.');
+            await subirPlanificacionCurricular(trimestre,curso,asignatura,`cfg-plan-file-${trimestre}`);
+        }
+        async function subirPlanificacionCurricular(trimestre,curso,asignatura,inputId){
+            const resultado=document.getElementById(`cfg-plan-resultado-${trimestre}`);
+            const estado=(html,clase='text-slate-600')=>{if(resultado){resultado.className=`mt-2 p-2 rounded-lg border text-[10px] ${clase}`;resultado.innerHTML=html;}};
+            const fallar=(msg)=>{estado(`❌ <strong>PLANIFICACIÓN NO CARGADA</strong><br>${escapeHtml(msg)}`,'text-rose-700 bg-rose-50 border-rose-200');throw new Error(msg);};
+            try{
+                if(!cfgPeriodoActivo?.nombre)return fallar('Primero configura el período académico activo.');
+                const pares=obtenerParesCursoAsignaturaHorario();
+                if(!pares.some(p=>p.curso===curso&&p.asignatura===asignatura))return fallar('La combinación curso + asignatura no existe en el horario docente actual.');
+                const file=document.getElementById(inputId)?.files?.[0];
+                if(!file)return fallar('Selecciona un archivo JSON.');
+                if(file.size>5*1024*1024)return fallar('El archivo JSON no debe superar 5 MB.');
+                if(!/\.json$/i.test(file.name) && file.type!=='application/json')return fallar('El archivo seleccionado no es JSON.');
+                estado('🔄 <strong>1/5</strong> Leyendo el archivo JSON...','text-indigo-700 bg-indigo-50 border-indigo-200');
+                const textoJSON=await file.text();
+                let obj;
+                try{obj=JSON.parse(textoJSON);}catch(e){return fallar('El archivo contiene JSON inválido: '+e.message);}
+                estado('🔄 <strong>2/5</strong> Validando estructura, trimestre, curso, asignatura y temas...','text-indigo-700 bg-indigo-50 border-indigo-200');
+                const error=validarPlanificacionJSON(obj,Number(trimestre),asignatura,curso);
+                if(error)return fallar(error);
+                const meta=metadataPlanificacionJSON(obj);
+                const ahora=new Date().toISOString();
+                const registro={periodoAcademico:cfgPeriodoActivo.nombre,trimestre:Number(trimestre),curso,asignatura,archivoNombre:file.name,archivoTipo:file.type||'application/json',fechaCarga:ahora,actualizadoEn:ahora,origen:'archivo_json',metadataJSON:meta,contenido:obj};
+                const path=`configuracion/planificacionesCurriculares/${periodoPlanificacionClave()}/${trimestre}/${clavePlanificacion(curso,asignatura)}`;
+                estado('🔄 <strong>3/5</strong> Preparando la escritura en Firebase...','text-indigo-700 bg-indigo-50 border-indigo-200');
+                // No bloquear la carga por una pre-verificación genérica: una ruta de diagnóstico
+                // puede estar protegida aunque la ruta de planificación tenga permisos correctos.
+                // La propia escritura determina ahora de forma real si Firebase acepta el registro.
+                estado('🔄 <strong>4/5</strong> Guardando la planificación en Firebase...','text-indigo-700 bg-indigo-50 border-indigo-200');
+                try{
+                    await guardarValorFirebase(path,registro);
+                }catch(e){
+                    const detalle=e?.message||String(e);
+                    return fallar(`Firebase rechazó la escritura en la ruta de planificación. ${detalle}`);
+                }
+                estado('🔄 <strong>5/5</strong> Verificando que Firebase devolvió exactamente el registro guardado...','text-indigo-700 bg-indigo-50 border-indigo-200');
+                let verificacion;
+                try{verificacion=await leerValorRutaFirebase(path);}catch(e){return fallar(`La escritura pudo realizarse, pero no fue posible verificarla en Firebase: ${e.message||e}`);}
+                if(!verificacion)return fallar('Firebase devolvió un registro vacío después de la escritura.');
+                if(String(verificacion.archivoNombre)!==String(file.name)||String(verificacion.curso)!==String(curso)||String(verificacion.asignatura)!==String(asignatura)||Number(verificacion.trimestre)!==Number(trimestre)||!verificacion.contenido?.planificacion){return fallar('Firebase devolvió un registro diferente al enviado. No se actualizará la interfaz para evitar una falsa confirmación.');}
+                const pkey=periodoPlanificacionClave();
+                planificacionesCurriculares[pkey]=planificacionesCurriculares[pkey]||{};
+                planificacionesCurriculares[pkey][trimestre]=planificacionesCurriculares[pkey][trimestre]||{};
+                planificacionesCurriculares[pkey][trimestre][clavePlanificacion(curso,asignatura)]=verificacion;
+                // La auditoría es secundaria: jamás debe convertir una carga exitosa en una falsa carga fallida.
+                try{await registrarAuditoria('planificacion_curricular',`Planificación ${file.name} cargada: Trimestre ${trimestre}, ${curso}, ${asignatura}`);}catch(e){console.warn('[PLAN] Auditoría secundaria no registrada:',e);}
+                const temas=extraerTemasPlanificacion(verificacion.contenido).length;
+                try{renderPlanificacionesCurriculares();renderAsistenciaLista();}catch(e){console.warn('[PLAN] Actualización visual posterior no completada:',e);}
+                // El render reconstruye este bloque; recuperar el nodo garantiza que la confirmación
+                // quede visible en el DOM actual y no sobre un elemento que ya fue reemplazado.
+                const resultadoActual=document.getElementById(`cfg-plan-resultado-${trimestre}`);
+                if(resultadoActual){
+                    resultadoActual.className='mt-2 p-2 rounded-lg border text-[10px] text-emerald-700 bg-emerald-50 border-emerald-200';
+                    resultadoActual.innerHTML=`✅ <strong>PLANIFICACIÓN CARGADA CORRECTAMENTE</strong><br>Trimestre ${trimestre} · ${escapeHtml(curso)} · ${escapeHtml(asignatura)}<br>Archivo: ${escapeHtml(file.name)} · ${temas} tema(s)<br><span class="text-emerald-700">El registro fue escrito y verificado directamente en Firebase.</span>`;
+                }
+                const inputActual=document.getElementById(inputId);
+                if(inputActual)inputActual.value='';
+                alert(`✅ PLANIFICACIÓN CARGADA CORRECTAMENTE\n\nTrimestre: ${trimestre}\nCurso: ${curso}\nAsignatura: ${asignatura}\nArchivo: ${file.name}\nTemas disponibles: ${temas}\n\nEl registro fue escrito y verificado en Firebase.`);
+            }catch(e){
+                console.error('[PLANIFICACION]',e);
+                if(!String(e?.message||'').includes('PLANIFICACIÓN NO CARGADA'))estado(`❌ <strong>PLANIFICACIÓN NO CARGADA</strong><br>${escapeHtml(e?.message||String(e))}`,'text-rose-700 bg-rose-50 border-rose-200');
+            }
+        }
+        function verPlanificacionCurricular(trimestre,curso,asignatura){const reg=obtenerRegistroPlanificacion(trimestre,curso,asignatura);if(!reg)return;const temas=extraerTemasPlanificacion(reg.contenido),modal=document.createElement('div');modal.id='cfg-plan-modal';modal.className='fixed inset-0 z-[120] bg-slate-900/50 flex items-center justify-center p-4';modal.innerHTML=`<div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-auto"><div class="px-5 py-4 border-b flex justify-between gap-3"><div><h3 class="font-bold">📚 ${escapeHtml(asignatura)}</h3><p class="text-[11px] text-slate-500">${escapeHtml(curso)} · Trimestre ${trimestre} · ${escapeHtml(reg.archivoNombre||'')}</p></div><button onclick="document.getElementById('cfg-plan-modal')?.remove()" class="text-xl text-slate-500">×</button></div><div class="p-5 space-y-2">${temas.map((t,i)=>`<div class="border rounded-lg p-3"><div class="text-[10px] font-bold text-brand-700">${escapeHtml(t.unidad)}</div><div class="text-xs font-semibold text-slate-800 mt-1">${i+1}. ${escapeHtml(t.tema)}</div></div>`).join('')}</div></div>`;document.body.appendChild(modal);}
+        async function eliminarPlanificacionCurricular(trimestre,curso,asignatura){const reg=obtenerRegistroPlanificacion(trimestre,curso,asignatura);if(!reg)return;if(!confirm(`¿Eliminar la planificación de ${asignatura} · ${curso} · Trimestre ${trimestre}?`))return;const path=`configuracion/planificacionesCurriculares/${periodoPlanificacionClave()}/${trimestre}/${clavePlanificacion(curso,asignatura)}`,authOk=await ensureAuth();if(!authOk)return alert('No se pudo autenticar el docente.');try{await borrarValorFirebase(path);delete planificacionesCurriculares[periodoPlanificacionClave()][trimestre][clavePlanificacion(curso,asignatura)];await registrarAuditoria('planificacion_curricular',`Planificación eliminada: Trimestre ${trimestre}, ${curso}, ${asignatura}`);renderPlanificacionesCurriculares();renderAsistenciaLista();alert('✅ Planificación eliminada.');}catch(e){console.error(e);alert('No se pudo eliminar la planificación.');}}
+        function obtenerTemasSesion(clase,fecha){const trimestre=trimestrePorFecha(fecha);if(!trimestre)return{trimestre:null,temas:[],registro:null};const reg=obtenerRegistroPlanificacion(trimestre,clase.curso,clase.asignatura);return{trimestre,temas:reg?extraerTemasPlanificacion(reg.contenido):[],registro:reg};}
+        async function cargarTemasAsistenciaFecha(fecha){
+            asistenciaTemas[fecha]={};
+            try{
+                const remoto=(await leerValorRutaFirebase(`asistenciaTemas/${fecha}`))||{};
+                if(remoto && typeof remoto==='object' && Object.keys(remoto).length){
+                    asistenciaTemas[fecha]=remoto;
+                    return;
+                }
+            }catch(e){
+                console.warn('[ASISTENCIA] No se pudo leer asistenciaTemas; se usará almacenamiento integrado en asistencia:',e);
+            }
+            // Compatibilidad: si las reglas de RTDB no permiten el nodo nuevo asistenciaTemas,
+            // recuperar los temas desde el mismo nodo de asistencia, cuya escritura ya utiliza el sistema.
+            try{
+                const base=(await leerValorRutaFirebase(`asistencia/${fecha}`))||{};
+                Object.entries(base).forEach(([sid,nodo])=>{
+                    if(nodo && typeof nodo==='object' && nodo.temaClase && typeof nodo.temaClase==='object'){
+                        asistenciaTemas[fecha][sid]=nodo.temaClase;
+                    }
+                });
+            }catch(e){
+                console.warn('[ASISTENCIA] No se pudieron recuperar temas integrados:',e);
+            }
+        }
+
         function renderTabConfiguracion() {
             // (A) Período activo
             const inputP = document.getElementById('cfg-periodo-nombre');
@@ -11551,6 +11768,7 @@ video {
             // (C) Nómina por curso/paralelo
             renderCfgNominaSelectores();
             renderCfgNomina();
+            renderPlanificacionesCurriculares();
             renderCalendarioConfiguracion();
             renderHorarioMatriz();
             organizarConfiguracionProfesional();
@@ -11559,7 +11777,7 @@ video {
 
         // ===== Calendario académico, horario y asistencia =====
         const ASISTENCIA_DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
-        const HORARIO_DIAS = ['lunes','martes','miércoles','jueves','viernes'];
+        const HORARIO_DIAS = ['lunes','martes','miercoles','jueves','viernes'];
         const HORARIO_BLOQUES = [
             {id:1, hora:'07:00-07:40'}, {id:2, hora:'07:40-08:20'},
             {id:3, hora:'08:20-09:00'}, {id:4, hora:'09:00-09:40'},
@@ -11716,7 +11934,7 @@ video {
             if (!fecha) { asistenciaFechaActiva=''; actualizarEstadoFechaAsistencia(); renderAsistenciaLista(); return; }
             if (!fechaEsLaborable(fecha)) { asistenciaFechaActiva=''; const f=document.getElementById('asistencia-fecha'); if(f) f.value=fecha; actualizarEstadoFechaAsistencia(); renderAsistenciaLista(); return; }
             asistenciaFechaActiva=fecha; const f=document.getElementById('asistencia-fecha'); if(f) f.value=fecha; actualizarEstadoFechaAsistencia();
-            await cargarAsistenciaFecha(fecha); await cargarNovedadesEstudianteFecha(fecha); await cargarObservacionesCursoFecha(fecha); renderAsistenciaLista();
+            await cargarAsistenciaFecha(fecha); await cargarTemasAsistenciaFecha(fecha); await cargarNovedadesEstudianteFecha(fecha); await cargarObservacionesCursoFecha(fecha); renderAsistenciaLista();
         }
         function asistenciaSesionId(clase) { return encodeURIComponent(`${clase.curso}|${clase.paralelo}|${clase.hora}`); }
         async function cargarAsistenciaFecha(fecha) { try { asistenciaRegistros[fecha] = (await leerValorRutaFirebase(`asistencia/${fecha}`)) || {}; } catch(e) { console.warn('No se pudo cargar asistencia',e); asistenciaRegistros[fecha] = {}; } }
@@ -11761,15 +11979,21 @@ video {
             const val=reg?.estado||'presente';
             return `<select class="asistencia-estado-matriz" data-sesion="${escapeHtml(reg?._sid||'')}" aria-label="Estado de asistencia"><option value="presente" ${val==='presente'?'selected':''}>Presente</option><option value="ausente" ${val==='ausente'?'selected':''}>Ausente</option><option value="atraso" ${val==='atraso'?'selected':''}>Atraso</option><option value="justificado" ${val==='justificado'?'selected':''}>Falta justificada</option></select>`;
         }
+        function renderTemasAsistencia(clases){
+            const cont=document.getElementById('asistencia-temas-lista'),badge=document.getElementById('asistencia-trimestre-temas');if(!cont)return;cont.innerHTML='';if(!asistenciaFechaActiva||!clases?.length){if(badge)badge.textContent='';return;}const trimestres=new Set();
+            cont.innerHTML=clases.map((clase,idx)=>{const info=obtenerTemasSesion(clase,asistenciaFechaActiva);if(info.trimestre)trimestres.add(info.trimestre);const sid=asistenciaSesionId(clase),guardado=asistenciaTemas[asistenciaFechaActiva]?.[sid]||{},options=info.temas.map((t,i)=>`<option value="${i}" ${guardado.origen==='planificacion'&&guardado.tema===t.tema?'selected':''}>${escapeHtml(t.unidad)} · ${escapeHtml(t.tema)}</option>`).join('');return `<div class="bg-white border rounded-xl p-3"><div class="flex flex-wrap justify-between gap-2"><div><div class="font-bold text-xs text-slate-800">${escapeHtml(clase.asignatura||'Sin asignatura')}</div><div class="text-[10px] text-slate-500">${escapeHtml(clase.hora)} · ${escapeHtml(clase.curso)} ${escapeHtml(clase.paralelo)}</div></div><span class="text-[10px] font-bold ${info.registro?'text-emerald-700':'text-amber-700'}">${info.registro?'📗 Planificación disponible':'⚠️ Sin planificación cargada'}</span></div>${info.trimestre?`<div class="mt-2 grid grid-cols-1 lg:grid-cols-2 gap-2"><label class="text-[10px] font-bold text-slate-600">Tema planificado<select id="asistencia-tema-select-${idx}" data-sesion="${escapeHtml(sid)}" class="mt-1 w-full px-2 py-2 border rounded-lg bg-white text-xs"><option value="">${info.temas.length?'Seleccione un tema planificado':'No hay temas disponibles'}</option>${options}<option value="__EXTRA__" ${guardado.origen==='docente'?'selected':''}>✏️ Tema adicional creado por el docente</option></select></label><label class="text-[10px] font-bold text-slate-600">Tema adicional / práctico<input id="asistencia-tema-extra-${idx}" maxlength="300" value="${guardado.origen==='docente'?escapeHtml(guardado.tema||''):''}" class="mt-1 w-full px-2 py-2 border rounded-lg bg-white text-xs" placeholder="Ej. Actividad práctica no prevista en la planificación"></label></div><div class="mt-2 text-[10px] text-slate-400">Se guarda asociado a fecha, bloque, asignatura, curso y paralelo.</div>`:`<div class="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-[10px] text-amber-800">La fecha no está dentro de un trimestre configurado.</div>`}</div>`;}).join('');if(badge)badge.textContent=trimestres.size?`Trimestre ${[...trimestres].join(', ')}`:'Sin trimestre';
+        }
+
         function renderAsistenciaLista() {
             const tbody=document.getElementById('asistencia-tabla'), thead=document.getElementById('asistencia-cabecera'); if(!tbody||!thead)return;
             poblarSelectoresAsistencia();
             const fecha=asistenciaFechaActiva,c=document.getElementById('asistencia-curso')?.value||'',p=document.getElementById('asistencia-paralelo')?.value||'';
-            const aviso=document.getElementById('asistencia-aviso'); if(aviso) aviso.classList.add('hidden'); tbody.innerHTML=''; thead.innerHTML=''; actualizarEstadoFechaAsistencia();
+            const aviso=document.getElementById('asistencia-aviso'); if(aviso) aviso.classList.add('hidden'); tbody.innerHTML=''; thead.innerHTML=''; renderTemasAsistencia([]); actualizarEstadoFechaAsistencia();
             if(!fecha||!fechaEsLaborable(fecha)){const d=document.getElementById('asistencia-dia-seleccionado');if(d)d.textContent='Seleccione una fecha laborable. La fecha no laborable se administra desde Configuración > Calendario académico.';document.getElementById('asistencia-vacia')?.classList.remove('hidden');return;}
             const dia=normalizarDiaHorario(asistenciaDia(fecha));
             const clases=horarioDocente.filter(x=>normalizarDiaHorario(x.dia)===dia&&(!c||x.curso===c)&&(!p||x.paralelo===p)).sort((a,b)=>Number(a.bloque||0)-Number(b.bloque||0));
             if(!clases.length){const d=document.getElementById('asistencia-dia-seleccionado');if(d)d.textContent=`${fecha} · No hay clases configuradas para los filtros seleccionados.`;document.getElementById('asistencia-vacia')?.classList.remove('hidden');document.getElementById('asistencia-resumen-clases').textContent='';return;}
+            renderTemasAsistencia(clases);
             const grupos=[...new Map(clases.map(x=>[`${x.curso}|${x.paralelo}`,{curso:x.curso,paralelo:x.paralelo}])).values()];
             const grupoPermitido=e=>!c&&!p||grupos.some(g=>g.curso===e.curso&&g.paralelo===e.paralelo);
             const listaEstudiantes=estudiantes.filter(grupoPermitido).sort((a,b)=>a.curso.localeCompare(b.curso,'es',{numeric:true})||a.paralelo.localeCompare(b.paralelo,'es')||a.nombre.localeCompare(b.nombre,'es'));
@@ -11792,7 +12016,43 @@ video {
         async function guardarAsistencia() {
             const fecha=asistenciaFechaActiva; if(!fecha||!fechaEsLaborable(fecha))return alert('Seleccione una fecha laborable.');
             const filas=[...document.querySelectorAll('#asistencia-tabla tr[data-cedula]')]; if(!filas.length)return alert('No hay estudiantes para guardar.');
+            const clasesDia=horarioDocente.filter(x=>normalizarDiaHorario(x.dia)===normalizarDiaHorario(asistenciaDia(fecha)));
+            asistenciaTemas[fecha]=asistenciaTemas[fecha]||{};
             const authOk=await ensureAuth(),nuevos={...(asistenciaRegistros[fecha]||{})}; asistenciaNovedadesEstudiante[fecha]=asistenciaNovedadesEstudiante[fecha]||{};
+            const selectoresTema=[...document.querySelectorAll('#asistencia-temas-lista select[data-sesion]')];
+            for(const sel of selectoresTema){
+                const sid=sel.dataset.sesion,clase=clasesDia.find(x=>asistenciaSesionId(x)===sid);if(!clase)continue;
+                const idxExtra=selectoresTema.indexOf(sel),extra=document.getElementById(`asistencia-tema-extra-${idxExtra}`),info=obtenerTemasSesion(clase,fecha),selected=sel.value||'',extraTema=extra?.value.trim()||'';
+                let tema='',unidad='',origen='';if(extraTema){tema=extraTema;origen='docente';unidad='Tema adicional';}else if(selected&&selected!=='__EXTRA__'&&info.temas[Number(selected)]){const t=info.temas[Number(selected)];tema=t.tema;unidad=t.unidad;origen='planificacion';}else if(asistenciaTemas[fecha]?.[sid]){const oldTema=asistenciaTemas[fecha][sid];tema=oldTema.tema||'';unidad=oldTema.unidad||'';origen=oldTema.origen||'';}
+                if(tema){
+                    const registro={fecha,periodoAcademico:cfgPeriodoActivo?.nombre||'',trimestre:info.trimestre,curso:clase.curso,paralelo:clase.paralelo,asignatura:clase.asignatura||'',hora:clase.hora||'',unidad,tema,origen,planificacionArchivo:info.registro?.archivoNombre||'',actualizadoEn:new Date().toISOString()};
+                    if(authOk){
+                        let guardado=false,ultimoError=null;
+                        // Ruta principal de la nueva funcionalidad.
+                        try{await guardarValorFirebase(`asistenciaTemas/${fecha}/${sid}`,registro);guardado=true;}
+                        catch(e){ultimoError=e;console.warn('[ASISTENCIA] Falló asistenciaTemas; intentando ruta compatible:',e);}
+                        // Compatibilidad con reglas existentes: guardar el tema dentro del mismo nodo
+                        // de asistencia que ya utiliza el sistema para registrar la asistencia.
+                        if(!guardado){
+                            try{
+                                await guardarValorFirebase(`asistencia/${fecha}/${sid}/temaClase`,registro);
+                                guardado=true;
+                            }catch(e){ultimoError=e;console.error('[ASISTENCIA] Fallaron ambas rutas de guardado:',e);}
+                        }
+                        if(!guardado){
+                            const detalle=ultimoError?.message||String(ultimoError||'Error desconocido');
+                            return alert(`No se pudo guardar el tema de ${clase.asignatura||'la clase'}.\n\nDetalle técnico: ${detalle}`);
+                        }
+                    }else{
+                        return alert('Firebase no está disponible para guardar el tema de la clase.');
+                    }
+                    asistenciaTemas[fecha][sid]=registro;
+                    // Mantener también la caché local integrada para la sesión actual.
+                    asistenciaRegistros[fecha]=asistenciaRegistros[fecha]||{};
+                    asistenciaRegistros[fecha][sid]=asistenciaRegistros[fecha][sid]||{};
+                    asistenciaRegistros[fecha][sid].temaClase=registro;
+                }
+            }
             for(const fila of filas){
                 const cedula=fila.dataset.cedula,est=estudiantes.find(x=>x.cedula===cedula); if(!est)continue;
                 const novedad=fila.querySelector('.asistencia-novedad-estudiante')?.value.trim()||'';
@@ -11807,15 +12067,15 @@ video {
                     if(authOk){try{await guardarValorFirebase(`asistencia/${fecha}/${sid}/${cedula}`,reg);}catch(e){console.error(e);return alert(`No se pudo guardar la asistencia de ${est.nombre}.`);}}
                 }
             }
-            asistenciaRegistros[fecha]=nuevos;await registrarAuditoria('asistencia_novedades',`Asistencia y novedades guardadas para ${filas.length} estudiantes el ${fecha}`);alert('Asistencia y novedades guardadas correctamente.');
+            asistenciaRegistros[fecha]=nuevos;await registrarAuditoria('asistencia_novedades',`Asistencia, temas y novedades guardados para ${filas.length} estudiantes el ${fecha}`);alert('Asistencia, temas y novedades guardados correctamente.');
         }
         async function generarReporteAsistencia() {
             if(!horarioDocente.length) return alert('Primero configura el horario en Configuración.');
             const desde=document.getElementById('asistencia-reporte-desde').value,hasta=document.getElementById('asistencia-reporte-hasta').value;if(!desde||!hasta||desde>hasta)return alert('Selecciona un rango de fechas válido.');
             const fechas=[]; for(let d=new Date(`${desde}T12:00:00`),fin=new Date(`${hasta}T12:00:00`);d<=fin;d.setDate(d.getDate()+1)){const f=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;if(fechaEsLaborable(f))fechas.push(f);}
-            await Promise.all(fechas.map(cargarAsistenciaFecha));
-            const out=[['Fecha','Día','Hora','Asignatura','Curso','Paralelo','Cédula','Estudiante','Estado','Novedad estudiante','Observación curso']];
-            for(const fecha of fechas){for(const clase of horarioDocente.filter(x=>normalizarDiaHorario(x.dia)===normalizarDiaHorario(asistenciaDia(fecha)))){const key=encodeURIComponent(`${clase.curso}|${clase.paralelo}`);let novCurso='';try{const n=await leerValorRutaFirebase(`asistenciaNovedadesCurso/${fecha}/${key}`);novCurso=n?.observacion||'';}catch(e){}for(const est of estudiantes.filter(e=>e.curso===clase.curso&&e.paralelo===clase.paralelo)){const reg=asistenciaRegistros[fecha]?.[asistenciaSesionId(clase)]?.[est.cedula];out.push([fecha,asistenciaDia(fecha),clase.hora,clase.asignatura||'',clase.curso,clase.paralelo,est.cedula,est.nombre,reg?.estado||'Sin registrar',reg?.observacion||'',novCurso]);}}}
+            await Promise.all(fechas.map(async f=>{await cargarAsistenciaFecha(f);await cargarTemasAsistenciaFecha(f);}));
+            const out=[['Fecha','Día','Hora','Asignatura','Curso','Paralelo','Unidad','Tema de clase','Origen tema','Cédula','Estudiante','Estado','Novedad estudiante','Observación curso']];
+            for(const fecha of fechas){for(const clase of horarioDocente.filter(x=>normalizarDiaHorario(x.dia)===normalizarDiaHorario(asistenciaDia(fecha)))){const key=encodeURIComponent(`${clase.curso}|${clase.paralelo}`);let novCurso='';try{const n=await leerValorRutaFirebase(`asistenciaNovedadesCurso/${fecha}/${key}`);novCurso=n?.observacion||'';}catch(e){}for(const est of estudiantes.filter(e=>e.curso===clase.curso&&e.paralelo===clase.paralelo)){const reg=asistenciaRegistros[fecha]?.[asistenciaSesionId(clase)]?.[est.cedula],tema=asistenciaTemas[fecha]?.[asistenciaSesionId(clase)]||{};out.push([fecha,asistenciaDia(fecha),clase.hora,clase.asignatura||'',clase.curso,clase.paralelo,tema.unidad||'',tema.tema||'',tema.origen||'',est.cedula,est.nombre,reg?.estado||'Sin registrar',reg?.observacion||'',novCurso]);}}}
             if(out.length===1)return alert('No hay clases configuradas en el horario dentro del rango seleccionado.');const csv='\uFEFF'+out.map(row=>row.map(escaparCSV).join(',')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`reporte_asistencia_novedades_${desde}_${hasta}.csv`;a.click();URL.revokeObjectURL(url);
         }
 
